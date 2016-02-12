@@ -14,6 +14,12 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  
+-------v2.51---------------------
+ schedule function changed so runIn does not overwrite and cancel schedule
+ -ln 769 schedule cycleOn-> checkOn
+ -ln 841 checkOn function
+ -ln 863 state.run = false
+ 
 -------Fixes
  -changed weather from def to Map
  -ln 968 if(runnowmap) -> pumpmap
@@ -70,7 +76,7 @@ preferences {
 }
  
 def startPage(){
-    dynamicPage(name: "startPage", title: "Spruce Smart Irrigation setup V2.2", install: true, uninstall: true)
+    dynamicPage(name: "startPage", title: "Spruce Smart Irrigation setup V2.51", install: true, uninstall: true)
     {                      
             section(""){
             href(name: "globalPage", title: "Schedule settings", required: false, page: "globalPage",
@@ -763,7 +769,7 @@ def installSchedule(){
       if(enable) {
     	subscribe switches, "switch.programOn", manualStart
         schedule(checktime, Check)
-        schedule(runTime, cycleOn)
+        schedule(runTime, checkOn)
         note("schedule", "Schedule set to start at ${startTimeString()}", "w")
         writeSettings()
       } 
@@ -833,7 +839,11 @@ def getRunDays(day1,day2,day3,day4,day5,day6,day7)
     	str = "0 Days/week"
     return str
 }
- 
+
+def checkOn(){
+	cycleOn()
+}
+    
 //start water program
 def cycleOn(){        
     if (state.run == true){    
@@ -851,7 +861,8 @@ def cycleOn(){
  
 //when switch reports off, watering program is finished
 def cycleOff(evt){
-	if (contact == null || !contact.currentValue('contact').contains('open')){    
+	state.run = false
+    if (contact == null || !contact.currentValue('contact').contains('open')){    
     	note("finished", "finished watering for today", "d")    
     	unsubscribe(contact)
     }    
