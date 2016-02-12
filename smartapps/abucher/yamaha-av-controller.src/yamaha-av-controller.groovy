@@ -1,5 +1,5 @@
 /**
- *  Yahama AV Controller
+ *  Yamaha AV Controller
  *
  *  Copyright 2016 Aaron Bucher
  *
@@ -25,9 +25,7 @@ definition(
 
 
 preferences {
-	section("Title") {
-		// TODO: put inputs here
-	}
+	page(name:"yamahaDiscovery", title:"Yamaha Device Setup", content:"yamahaDiscovery", refreshTimeout:5)
 }
 
 def installed() {
