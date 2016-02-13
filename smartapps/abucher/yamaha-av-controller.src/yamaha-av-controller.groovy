@@ -29,7 +29,7 @@ preferences {
 }
 
 /**
- * Device discovery
+ * Device discovery.
  */
 def deviceDiscovery () {
 	if(canInstallLabs()) {
@@ -74,12 +74,59 @@ To update your Hub, access Location Settings in the Main Menu (tap the gear next
 	}
 }
 
-/**
- * Discover Yamaha
- */
 private discoverYamahas() {
 	sendHubCommand(new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:MediaRenderer:1", physicalgraph.device.Protocol.LAN))
 }
+
+/**
+ * Verify Yamaha devices.
+ */
+private verifyYamahaDevice() {
+	def devices = getYamahaDevice().findAll { it?.value?.verified != true }
+
+	if(devices) {
+		log.warn "UNVERIFIED PLAYERS!: $devices"
+	}
+
+	devices.each {
+		verifyYamahas((it?.value?.ip + ":" + it?.value?.port))
+	}
+}
+
+private verifyYamahas(String deviceNetworkId) {
+
+	log.trace "dni: $deviceNetworkId"
+	String ip = getHostAddress(deviceNetworkId)
+
+	log.trace "ip:" + ip
+
+	//sendHubCommand(new physicalgraph.device.HubAction("""GET /xml/device_description.xml HTTP/1.1\r\nHOST: $ip\r\n\r\n""", physicalgraph.device.Protocol.LAN, "${deviceNetworkId}"))
+}
+
+/**
+ * Device utilities.
+ */
+Map yamahasDiscovered() {
+	def verifiedYamahas = getVerifiedYamahas()
+	def map = [:]
+	verifiedYamahas.each {
+		def value = "${it.value.name}"
+		def key = it.value.ip + ":" + it.value.port
+		map["${key}"] = value
+	}
+	map
+}
+
+def getYamahaDevice()
+{
+	state.yamahaDevices = state.yamahaDevices ?: [:]
+}
+
+def getVerifiedYamahaDevice()
+{
+	getYamahaDevice().findAll{ it?.value?.verified == true }
+}
+
 
 def installed() {
 	log.debug "Installed with settings: ${settings}"
