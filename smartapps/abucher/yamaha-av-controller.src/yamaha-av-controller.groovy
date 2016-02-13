@@ -25,13 +25,13 @@ definition(
 
 
 preferences {
-	page(name:"yamahaDiscovery", title:"Yamaha Device Setup", content:"yamahaDiscovery", refreshTimeout:5)
+	page(name:"yamahaDiscovery", title:"Yamaha Device Setup", content:"deviceDiscovery", refreshTimeout:5)
 }
 
 /**
  * Device discovery
  */
-def yamahaDiscovery () {
+def deviceDiscovery () {
 	if(canInstallLabs()) {
 		int refreshCount = !state.refreshCount ? 0 : state.refreshCount as int
 		state.refreshCount += 1
@@ -42,7 +42,7 @@ def yamahaDiscovery () {
 		def numFound = options.size() ?: 0
 
 		if(!state.subscribe) {
-			log.trace "subscribe to location"
+			log.trace "Yamaha: Subscribe to location..."
 			subscribe(location, null, locationHandler, [filterEvents:false])
 			state.subscribe = true
 		}
@@ -72,6 +72,13 @@ To update your Hub, access Location Settings in the Main Menu (tap the gear next
 			}
 		}
 	}
+}
+
+/**
+ * Discover Yamaha
+ */
+private discoverYamahas() {
+	sendHubCommand(new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:MediaRenderer:1", physicalgraph.device.Protocol.LAN))
 }
 
 def installed() {
