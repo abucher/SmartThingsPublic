@@ -270,20 +270,17 @@ def locationHandler(evt) {
 		log.trace "SSDP: Yamaha response type: $type"
 		
         if (type?.contains("xml")) {
-        	// description.xml response (application/xml)
 			body = new XmlSlurper().parseText(bodyString)
 
-			if (body?.device?.modelName?.text().startsWith("Sonos") && !body?.device?.modelName?.text().contains("Bridge") && !body?.device?.modelName?.text().contains("Sub"))
-			{
-				def sonoses = getSonosPlayer()
-				def player = sonoses.find {it?.key?.contains(body?.device?.UDN?.text())}
-				if (player)
-				{
-					player.value << [name:body?.device?.roomName?.text(),model:body?.device?.modelName?.text(), serialNumber:body?.device?.serialNum?.text(), verified: true]
+			if (body?.system?.config?.modelName?.text()) {
+				def yamahas = getYamahaDevice()
+				def device = yamahas.find {it?.key?.contains(body?.system?.config?.systemId?.text())}
+				if (device) {
+                	log.trace "SSDP: Updating Yamaha device: Name: ${body?.system?.config?.modelName?.text()}; System ID: ${body?.system?.config?.systemId?.text()}"
+					device.value << [name:body?.system?.config?.modelName?.text(),systemId:body?.system?.config?.systemId?.text(), verified: true]
 				}
-				else
-				{
-					log.error "/xml/device_description.xml returned a device that didn't exist"
+				else {
+					log.error "SSDP: XML response returned a device that does not exist."
 				}
 			}
 		}
