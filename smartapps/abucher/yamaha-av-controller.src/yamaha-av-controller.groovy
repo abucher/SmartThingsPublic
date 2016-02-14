@@ -28,6 +28,8 @@ preferences {
 	page(name:"yamahaDiscovery", title:"Yamaha Device Setup", content:"deviceDiscovery", refreshTimeout:5)
 }
 
+def yamahaUpnp = "urn:schemas-upnp-org:device:MediaRenderer:1"
+
 /**
  * Device discovery.
  */
@@ -75,7 +77,7 @@ To update your Hub, access Location Settings in the Main Menu (tap the gear next
 }
 
 private discoverYamahas() {
-	sendHubCommand(new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:MediaRenderer:1", physicalgraph.device.Protocol.LAN))
+	sendHubCommand(new physicalgraph.device.HubAction("lan discovery $yamahaUpnp", physicalgraph.device.Protocol.LAN))
 }
 
 /**
@@ -134,6 +136,14 @@ def installed() {
 	initialize()
 }
 
+def uninstalled() {
+	def devices = getChildDevices()
+	log.trace "deleting ${devices.size()} Yamaha"
+	devices.each {
+		deleteChildDevice(it.deviceNetworkId)
+	}
+}
+
 def updated() {
 	log.debug "Updated with settings: ${settings}"
 
@@ -141,8 +151,151 @@ def updated() {
 	initialize()
 }
 
+
 def initialize() {
-	// TODO: subscribe to attributes, devices, locations, etc.
+	unsubscribe()
+	state.subscribe = false
+
+	unschedule()
+	scheduleActions()
+
+	if (selectedYamaha) {
+		addYamaha()
+	}
+
+	scheduledActionsHandler()
 }
 
-// TODO: implement event handlers
+/**
+ * Event handlers.
+ */
+def scheduledActionsHandler() {
+	log.trace "scheduledActionsHandler()"
+	syncDevices()
+	refreshAll()
+}
+
+private scheduleActions() {
+	def sec = Math.round(Math.floor(Math.random() * 60))
+	def min = Math.round(Math.floor(Math.random() * 20))
+	def cron = "$sec $min/20 * * * ?"
+	log.trace "schedule('$cron', scheduledActionsHandler)"
+	schedule(cron, scheduledActionsHandler)
+}
+
+private syncDevices() {
+	log.trace "Doing Yamaha device sync!"
+
+	if(!state.subscribe) {
+		subscribe(location, null, locationHandler, [filterEvents:false])
+		state.subscribe = true
+	}
+
+	discoverYamahas()
+}
+
+private refreshAll(){
+	log.trace "Refreshing Yamaha devices..."
+	childDevices*.refresh()
+	log.trace "Refresh complete."
+}
+
+def addYamaha() {
+	def devices = getVerifiedYamahaDevice()
+	def runSubscribe = false
+	selectedYamaha.each { dni ->
+		def d = getChildDevice(dni)
+		if(!d) {
+			def newDevice = devices.find { (it.value.ip + ":" + it.value.port) == dni }
+			log.trace "New Yamaha device: $newDevice; ID: $dni"
+			d = addChildDevice("smartthings", "Yamaha Receiver", dni, newDevice?.value.hub, [label:"${newDevice?.value.name} Yamaha"])
+			log.trace "Created ${d.displayName} Yamaha device with ID: $dni"
+
+			d.setModel(newDevice?.value.model)
+			log.trace "Set Yamaha device ${d.displayName} model to ${newPlayer?.value.model}"
+
+			runSubscribe = true
+		} else {
+			log.trace "Found Yamaha device ${d.displayName} with ID $dni already exists."
+		}
+	}
+}
+
+def locationHandler(evt) {
+	def description = evt.description
+	def hub = evt?.hubId
+
+	def parsedEvent = parseEventMessage(description)
+	parsedEvent << ["hub":hub]
+
+	// SSDP discovery
+	if (parsedEvent?.ssdpTerm?.contains($yamahaUpnp)) {
+		log.trace "SSDP: Yamaha device found."
+        
+        def yamahas = getYamahaDevice()
+
+		if (!(yamahas."${parsedEvent.ssdpUSN.toString()}")) {
+            log.trace "SSDP: NEW Yamaha found."
+            
+			yamahas << ["${parsedEvent.ssdpUSN.toString()}":parsedEvent]
+		}
+        else {
+			log.trace "SSDP: Existing Yamaha found."
+
+			def d = yamahas."${parsedEvent.ssdpUSN.toString()}"
+
+			if(d.ip != parsedEvent.ip || d.port != parsedEvent.port) {
+				log.trace "SSDP: Updated device's IP and port."
+                
+                d.ip = parsedEvent.ip
+				d.port = parsedEvent.port
+			
+				def children = getChildDevices()
+				children.each {
+					if (it.getDeviceDataByName("mac") == parsedEvent.mac) {
+						log.trace "SSDP: Updated device's DNI for device ${it} with mac ${parsedEvent.mac}."
+						it.setDeviceNetworkId((parsedEvent.ip + ":" + parsedEvent.port))
+					}
+				}
+			}
+		}
+	}
+	else if (parsedEvent.headers && parsedEvent.body) {
+    	log.trace "SSDP: Received Yamaha device response."
+        
+		def headerString = new String(parsedEvent.headers.decodeBase64())
+		def bodyString = new String(parsedEvent.body.decodeBase64())
+		def type = (headerString =~ /Content-Type:.*/) ? (headerString =~ /Content-Type:.*/)[0] : null
+		def body
+		log.trace "SSDP: Yamaha response type: $type"
+		
+        if (type?.contains("xml")) {
+        	// description.xml response (application/xml)
+			body = new XmlSlurper().parseText(bodyString)
+
+			if (body?.device?.modelName?.text().startsWith("Sonos") && !body?.device?.modelName?.text().contains("Bridge") && !body?.device?.modelName?.text().contains("Sub"))
+			{
+				def sonoses = getSonosPlayer()
+				def player = sonoses.find {it?.key?.contains(body?.device?.UDN?.text())}
+				if (player)
+				{
+					player.value << [name:body?.device?.roomName?.text(),model:body?.device?.modelName?.text(), serialNumber:body?.device?.serialNum?.text(), verified: true]
+				}
+				else
+				{
+					log.error "/xml/device_description.xml returned a device that didn't exist"
+				}
+			}
+		}
+		else if(type?.contains("json"))
+		{ //(application/json)
+			body = new groovy.json.JsonSlurper().parseText(bodyString)
+			log.trace "GOT JSON $body"
+		}
+
+	}
+	else {
+		log.trace "cp desc: " + description
+		//log.trace description
+	}
+}
