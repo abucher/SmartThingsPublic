@@ -267,7 +267,7 @@ def locationHandler(evt) {
 		def bodyString = new String(parsedEvent.body.decodeBase64())
 		def type = (headerString =~ /Content-Type:.*/) ? (headerString =~ /Content-Type:.*/)[0] : null
 		def body
-		log.trace "SSDP: Yamaha response type: $type"
+		log.trace "SSDP: Yamaha response type: ${type}"
 		
         if (type?.contains("xml")) {
 			body = new XmlSlurper().parseText(bodyString)
@@ -283,16 +283,140 @@ def locationHandler(evt) {
 					log.error "SSDP: XML response returned a device that does not exist."
 				}
 			}
-		}
-		else if(type?.contains("json"))
-		{ //(application/json)
-			body = new groovy.json.JsonSlurper().parseText(bodyString)
-			log.trace "GOT JSON $body"
-		}
-
-	}
-	else {
-		log.trace "cp desc: " + description
-		//log.trace description
+        } else {
+        		log.trace "SSDP: Unknown respose type: ${type}"
+        }
+	} else {
+		log.trace "SSDP: Unknown event description: " + description
 	}
 }
+
+private def parseEventMessage(Map event) {
+	return event
+}
+
+private def parseEventMessage(String description) {
+	def event = [:]
+	def parts = description.split(',')
+    log.trace "Parsing event message..."
+    
+	parts.each { part ->
+		part = part.trim()
+		if (part.startsWith('devicetype:')) {
+			def valueString = part.split(":")[1].trim()
+			event.devicetype = valueString
+            log.trace "Event message: devicetype: ${event.devicetype}"
+		}
+		else if (part.startsWith('mac:')) {
+			def valueString = part.split(":")[1].trim()
+			if (valueString) {
+				event.mac = valueString
+			}
+            log.trace "Event message: mac: ${event.mac}"
+		}
+		else if (part.startsWith('networkAddress:')) {
+			def valueString = part.split(":")[1].trim()
+			if (valueString) {
+				event.ip = valueString
+			}
+            log.trace "Event message: ip: ${event.ip}"
+		}
+		else if (part.startsWith('deviceAddress:')) {
+			def valueString = part.split(":")[1].trim()
+			if (valueString) {
+				event.port = valueString
+			}
+            log.trace "Event message: port: ${event.port}"
+		}
+		else if (part.startsWith('ssdpPath:')) {
+			def valueString = part.split(":")[1].trim()
+			if (valueString) {
+				event.ssdpPath = valueString
+			}
+            log.trace "Event message: ssdpPath: ${event.ssdpPath}"
+		}
+		else if (part.startsWith('ssdpUSN:')) {
+			part -= "ssdpUSN:"
+			def valueString = part.trim()
+			if (valueString) {
+				event.ssdpUSN = valueString
+			}
+            log.trace "Event message: ssdpUSN: ${event.ssdpUSN}"
+		}
+		else if (part.startsWith('ssdpTerm:')) {
+			part -= "ssdpTerm:"
+			def valueString = part.trim()
+			if (valueString) {
+				event.ssdpTerm = valueString
+			}
+            log.trace "Event message: ssdpTerm: ${event.ssdpTerm}"
+		}
+		else if (part.startsWith('headers')) {
+			part -= "headers:"
+			def valueString = part.trim()
+			if (valueString) {
+				event.headers = valueString
+			}
+            log.trace "Event message: headers: ${event.headers}"
+		}
+		else if (part.startsWith('body')) {
+			part -= "body:"
+			def valueString = part.trim()
+			if (valueString) {
+				event.body = valueString
+			}
+            log.trace "Event message: body: ${event.body}"
+		}
+	}
+
+	event
+}
+
+/**
+ * Child device methods.
+ */
+def parse(childDevice, description) {
+	def parsedEvent = parseEventMessage(description)
+
+	if (parsedEvent.headers && parsedEvent.body) {
+		def headerString = new String(parsedEvent.headers.decodeBase64())
+		def bodyString = new String(parsedEvent.body.decodeBase64())
+		log.trace "Parse: ${bodyString}"
+
+		def body = new groovy.json.JsonSlurper().parseText(bodyString)
+	} else {
+		log.error "Parse: Error parsing headers and body."
+		return []
+	}
+}
+
+private Integer convertHexToInt(hex) {
+	Integer.parseInt(hex,16)
+}
+
+private String convertHexToIP(hex) {
+	[convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
+}
+
+private getHostAddress(d) {
+	def parts = d.split(":")
+	def ip = convertHexToIP(parts[0])
+	def port = convertHexToInt(parts[1])
+	return ip + ":" + port
+}
+
+private Boolean canInstallLabs()
+{
+	return hasAllHubsOver("000.011.00603")
+}
+
+private Boolean hasAllHubsOver(String desiredFirmware)
+{
+	return realHubFirmwareVersions.every { fw -> fw >= desiredFirmware }
+}
+
+private List getRealHubFirmwareVersions()
+{
+	return location.hubs*.firmwareVersionString.findAll { it }
+}
+ 
