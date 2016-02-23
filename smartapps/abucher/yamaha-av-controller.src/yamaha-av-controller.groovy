@@ -77,7 +77,7 @@ To update your Hub, access Location Settings in the Main Menu (tap the gear next
 }
 
 private discoverYamahas() {
-	sendHubCommand(new physicalgraph.device.HubAction("lan discovery $yamahaUpnp", physicalgraph.device.Protocol.LAN))
+	sendHubCommand(new physicalgraph.device.HubAction("lan discovery ${yamahaUpnp}", physicalgraph.device.Protocol.LAN))
 }
 
 /**
@@ -96,13 +96,10 @@ private verifyYamahaDevice() {
 }
 
 private verifyYamahas(String deviceNetworkId) {
-
-	log.trace "Verifying Yamaha DNI: ${deviceNetworkId}"
 	String ip = getHostAddress(deviceNetworkId)
 
-	log.trace "Verifying Yamaha IP: ${ip}"
+	log.trace "Verifying Yamaha: DNI: ${deviceNetworkId}, IP: ${ip}"
 
-	//sendHubCommand(new physicalgraph.device.HubAction("""GET /xml/device_description.xml HTTP/1.1\r\nHOST: $ip\r\n\r\n""", physicalgraph.device.Protocol.LAN, "${deviceNetworkId}"))
     sendHubCommand(new physicalgraph.device.HubAction(
     	method: "POST",
         path: "/YamahaRemoteControl/ctrl",
@@ -127,13 +124,11 @@ Map yamahasDiscovered() {
 	map
 }
 
-def getYamahaDevice()
-{
+def getYamahaDevice() {
 	state.yamahaDevices = state.yamahaDevices ?: [:]
 }
 
-def getVerifiedYamahaDevice()
-{
+def getVerifiedYamahaDevice() {
 	getYamahaDevice().findAll{ it?.value?.verified == true }
 }
 
@@ -146,8 +141,10 @@ def installed() {
 
 def uninstalled() {
 	def devices = getChildDevices()
-	log.trace "deleting ${devices.size()} Yamaha"
-	devices.each {
+	
+    log.debug "Uninstalling ${devices.size()} Yamaha(s)"
+	
+    devices.each {
 		deleteChildDevice(it.deviceNetworkId)
 	}
 }
