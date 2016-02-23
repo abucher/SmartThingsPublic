@@ -97,12 +97,20 @@ private verifyYamahaDevice() {
 
 private verifyYamahas(String deviceNetworkId) {
 
-	log.trace "dni: $deviceNetworkId"
+	log.trace "Verifying Yamaha DNI: ${deviceNetworkId}"
 	String ip = getHostAddress(deviceNetworkId)
 
-	log.trace "ip:" + ip
+	log.trace "Verifying Yamaha IP: ${ip}"
 
 	//sendHubCommand(new physicalgraph.device.HubAction("""GET /xml/device_description.xml HTTP/1.1\r\nHOST: $ip\r\n\r\n""", physicalgraph.device.Protocol.LAN, "${deviceNetworkId}"))
+    sendHubCommand(new physicalgraph.device.HubAction(
+    	method: "POST",
+        path: "/YamahaRemoteControl/ctrl",
+        body: '<YAMAHA_AV cmd="GET"><System><Config>GetParam</Config></System></YAMAHA_AV>',
+        headers: [
+        	HOST: $ip
+        ]
+    ))
 }
 
 /**
