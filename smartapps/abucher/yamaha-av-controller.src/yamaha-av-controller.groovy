@@ -36,7 +36,7 @@ def yamahaUpnp = "urn:schemas-upnp-org:device:MediaRenderer:1"
 def deviceDiscovery () {
 	if(canInstallLabs()) {
 		int refreshCount = !state.refreshCount ? 0 : state.refreshCount as int
-		state.refreshCount += 1
+		state.refreshCount = refreshCount + 1
 		def refreshInterval = 3
 
 		def options = yamahasDiscovered() ?: []
@@ -114,7 +114,7 @@ private verifyYamahas(String deviceNetworkId) {
  * Device utilities.
  */
 Map yamahasDiscovered() {
-	def verifiedYamahas = getVerifiedYamahas()
+	def verifiedYamahas = getVerifiedYamahaDevice()
 	def map = [:]
 	verifiedYamahas.each {
 		def value = "${it.value.name}"
@@ -234,7 +234,7 @@ def locationHandler(evt) {
 	parsedEvent << ["hub":hub]
 
 	// SSDP discovery
-	if (parsedEvent?.ssdpTerm?.contains($yamahaUpnp)) {
+	if (parsedEvent?.ssdpPath?.contains("/MediaRenderer/desc.xml")) {
 		log.trace "SSDP: Yamaha device found."
         
         def yamahas = getYamahaDevice()
