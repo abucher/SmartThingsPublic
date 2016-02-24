@@ -100,14 +100,20 @@ private verifyYamahas(String deviceNetworkId) {
 
 	log.trace "Verifying Yamaha: DNI: ${deviceNetworkId}, IP: ${ip}"
 
-    sendHubCommand(new physicalgraph.device.HubAction(
+    /**sendHubCommand(new physicalgraph.device.HubAction(
     	method: "POST",
         path: "/YamahaRemoteControl/ctrl",
         body: '<YAMAHA_AV cmd="GET"><System><Config>GetParam</Config></System></YAMAHA_AV>',
         headers: [
         	HOST: $ip
         ]
+        ))*/
+    sendHubCommand(new physicalgraph.device.HubAction(
+    	"""POST /YamahaRemoteControl/ctrl HTTP/1.1\r\nHOST: $ip\r\nContent-type: application/xml\r\n<YAMAHA_AV cmd="GET"><System><Config>GetParam</Config></System></YAMAHA_AV>\r\n\r\n""",
+        physicalgraph.device.Protocol.LAN, "${deviceNetworkId}"
     ))
+    
+    //log.trace "Result: "
 }
 
 /**
@@ -265,13 +271,14 @@ def locationHandler(evt) {
 			}
 		}
 	}
-	else if (parsedEvent.headers && parsedEvent.body) {
+	else if (parsedEvent.headers) {
     	log.trace "SSDP: Received Yamaha device response."
         
 		def headerString = new String(parsedEvent.headers.decodeBase64())
-		def bodyString = new String(parsedEvent.body.decodeBase64())
+		//def bodyString = new String(parsedEvent.body.decodeBase64())
 		def type = (headerString =~ /Content-Type:.*/) ? (headerString =~ /Content-Type:.*/)[0] : null
 		def body
+        log.trace "SSDP: Yamaha response headers: ${headerString}"
 		log.trace "SSDP: Yamaha response type: ${type}"
 		
         if (type?.contains("xml")) {
@@ -381,6 +388,7 @@ private def parseEventMessage(String description) {
  * Child device methods.
  */
 def parse(childDevice, description) {
+	log.trace "Parse..."
 	def parsedEvent = parseEventMessage(description)
 
 	if (parsedEvent.headers && parsedEvent.body) {
