@@ -115,7 +115,8 @@ Map yamahasDiscovered() {
 	def map = [:]
 	verifiedYamahas.each {
 		def value = "${it.value.name}"
-		def key = it.value.ip + ":" + it.value.port
+		//def key = convertHexToIP(it.value.ip) + ":" + convertHexToInt(it.value.port)
+        def key = "${it.value.name}, ${it.value.description}"
 		map["${key}"] = value
 	}
 	map
@@ -205,8 +206,9 @@ private refreshAll(){
 def addYamaha() {
 	def devices = getVerifiedYamahaDevice()
 	def runSubscribe = false
-    log.trace "Adding device: ${dni}"
+   
 	selectedYamaha.each { dni ->
+    	log.trace "Adding device: ${dni}"
 		def d = getChildDevice(dni)
 		if(!d) {
 			def newDevice = devices.find { (it.value.ip + ":" + it.value.port) == dni }
