@@ -1,5 +1,5 @@
 /**
- *  RX-A1000
+ *  Yamaha AV Receiver
  *
  *  Copyright 2015 Aaron C. Bucher
  *
