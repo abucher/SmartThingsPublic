@@ -100,20 +100,11 @@ private verifyYamahas(String deviceNetworkId) {
 
 	log.trace "Verifying Yamaha: DNI: ${deviceNetworkId}, IP: ${ip}"
 
-    /**sendHubCommand(new physicalgraph.device.HubAction(
-    	method: "POST",
-        path: "/YamahaRemoteControl/ctrl",
-        body: '<YAMAHA_AV cmd="GET"><System><Config>GetParam</Config></System></YAMAHA_AV>',
-        headers: [
-        	HOST: $ip
-        ]
-        ))*/
     sendHubCommand(new physicalgraph.device.HubAction(
-    	"""POST /YamahaRemoteControl/ctrl HTTP/1.1\r\nHOST: $ip\r\nContent-type: application/xml\r\n<YAMAHA_AV cmd="GET"><System><Config>GetParam</Config></System></YAMAHA_AV>\r\n\r\n""",
-        physicalgraph.device.Protocol.LAN, "${deviceNetworkId}"
+    	"""GET /MediaRenderer/desc.xml HTTP/1.1\r\nHOST: $ip\r\n\r\n""",
+        physicalgraph.device.Protocol.LAN,
+        "${deviceNetworkId}"
     ))
-    
-    //log.trace "Result: "
 }
 
 /**
@@ -214,12 +205,13 @@ private refreshAll(){
 def addYamaha() {
 	def devices = getVerifiedYamahaDevice()
 	def runSubscribe = false
+    log.trace "Adding device: ${dni}"
 	selectedYamaha.each { dni ->
 		def d = getChildDevice(dni)
 		if(!d) {
 			def newDevice = devices.find { (it.value.ip + ":" + it.value.port) == dni }
 			log.trace "New Yamaha device: $newDevice; ID: $dni"
-			d = addChildDevice("smartthings", "Yamaha Receiver", dni, newDevice?.value.hub, [label:"${newDevice?.value.name} Yamaha"])
+			d = addChildDevice("smartthings", newDevice?.value.description, dni, newDevice?.value.hub, [label:"${newDevice?.value.name}"])
 			log.trace "Created ${d.displayName} Yamaha device with ID: $dni"
 
 			d.setModel(newDevice?.value.model)
@@ -271,25 +263,30 @@ def locationHandler(evt) {
 			}
 		}
 	}
-	else if (parsedEvent.headers) {
+	else if (parsedEvent.headers && parsedEvent.body) {
     	log.trace "SSDP: Received Yamaha device response."
         
 		def headerString = new String(parsedEvent.headers.decodeBase64())
-		//def bodyString = new String(parsedEvent.body.decodeBase64())
+		def bodyString = new String(parsedEvent.body.decodeBase64())
 		def type = (headerString =~ /Content-Type:.*/) ? (headerString =~ /Content-Type:.*/)[0] : null
 		def body
         log.trace "SSDP: Yamaha response headers: ${headerString}"
+        log.trace "SSDP: Yamaha response body: ${bodyString}"
 		log.trace "SSDP: Yamaha response type: ${type}"
 		
         if (type?.contains("xml")) {
 			body = new XmlSlurper().parseText(bodyString)
-
-			if (body?.system?.config?.modelName?.text()) {
+            
+			if (body?.device?.manufacturer?.text().contains("YAMAHA CORPORATION")) {
 				def yamahas = getYamahaDevice()
-				def device = yamahas.find {it?.key?.contains(body?.system?.config?.systemId?.text())}
+				def device = yamahas.find {it?.key?.contains(body?.device?.UDN?.text())}
 				if (device) {
-                	log.trace "SSDP: Updating Yamaha device: Name: ${body?.system?.config?.modelName?.text()}; System ID: ${body?.system?.config?.systemId?.text()}"
-					device.value << [name:body?.system?.config?.modelName?.text(),systemId:body?.system?.config?.systemId?.text(), verified: true]
+                	log.trace "SSDP: Updating Yamaha device: Name: ${body?.device?.friendlyName?.text()}, Description: ${body?.device?.modelDescription?.text()}, Model: ${body?.device?.modelName?.text()}; System ID: ${body?.device?.serialNumber?.text()}"
+					device.value << [name:body?.device?.friendlyName?.text(),
+                    				 description:body?.device?.modelDescription?.text(),
+                                     model:body?.device?.modelName?.text(),
+                                     systemId:body?.device?.serialNumber?.text(),
+                                     verified: true]
 				}
 				else {
 					log.error "SSDP: XML response returned a device that does not exist."
