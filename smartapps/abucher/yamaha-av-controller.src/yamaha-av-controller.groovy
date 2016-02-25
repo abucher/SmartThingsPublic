@@ -114,10 +114,7 @@ Map yamahasDiscovered() {
 	def verifiedYamahas = getVerifiedYamahaDevice()
 	def map = [:]
 	verifiedYamahas.each {
-		def value = "${it.value.name}"
-		//def key = convertHexToIP(it.value.ip) + ":" + convertHexToInt(it.value.port)
-        def key = "${it.value.name}, ${it.value.description}"
-		map["${key}"] = value
+		map["${it.value.name}"] = "${it.value.description}"
 	}
 	map
 }
@@ -211,13 +208,13 @@ def addYamaha() {
     	log.trace "Adding device: ${dni}"
 		def d = getChildDevice(dni)
 		if(!d) {
-			def newDevice = devices.find { (it.value.ip + ":" + it.value.port) == dni }
+			def newDevice = devices.find { it.value.name == dni }
 			log.trace "New Yamaha device: $newDevice; ID: $dni"
-			d = addChildDevice("smartthings", newDevice?.value.description, dni, newDevice?.value.hub, [label:"${newDevice?.value.name}"])
+			d = addChildDevice("abucher", "Yamaha ${newDevice?.value.description}", dni, newDevice?.value.hub, [label:"${newDevice?.value.name}"])
 			log.trace "Created ${d.displayName} Yamaha device with ID: $dni"
 
 			d.setModel(newDevice?.value.model)
-			log.trace "Set Yamaha device ${d.displayName} model to ${newPlayer?.value.model}"
+			log.trace "Set Yamaha device ${d.displayName} model to ${newDevice?.value.model}"
 
 			runSubscribe = true
 		} else {
