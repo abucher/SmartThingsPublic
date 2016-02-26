@@ -176,11 +176,8 @@ def scheduledActionsHandler() {
 }
 
 private scheduleActions() {
-	def sec = Math.round(Math.floor(Math.random() * 60))
-	def min = Math.round(Math.floor(Math.random() * 20))
-	def cron = "$sec $min/20 * * * ?"
-	log.trace "schedule('$cron', scheduledActionsHandler)"
-	schedule(cron, scheduledActionsHandler)
+	log.trace "Scheduling cron..."
+	schedule("${Math.round(Math.floor(Math.random() * 60))} ${Math.round(Math.floor(Math.random() * 20))}/20 * * * ?", scheduledActionsHandler)
 }
 
 private syncDevices() {
