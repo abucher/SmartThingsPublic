@@ -28,8 +28,6 @@ preferences {
 	page(name:"yamahaDiscovery", title:"Yamaha Device Setup", content:"deviceDiscovery", refreshTimeout:5)
 }
 
-def yamahaUpnp = "urn:schemas-upnp-org:device:MediaRenderer:1"
-
 /**
  * Device discovery.
  */
@@ -77,7 +75,8 @@ To update your Hub, access Location Settings in the Main Menu (tap the gear next
 }
 
 private discoverYamahas() {
-	sendHubCommand(new physicalgraph.device.HubAction("lan discovery ${yamahaUpnp}", physicalgraph.device.Protocol.LAN))
+	sendHubCommand(new physicalgraph.device.HubAction(
+    	"lan discovery urn:schemas-upnp-org:device:MediaRenderer:1", physicalgraph.device.Protocol.LAN))
 }
 
 /**
