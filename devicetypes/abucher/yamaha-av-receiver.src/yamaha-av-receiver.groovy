@@ -143,7 +143,6 @@ private getHostAddress() {
 
     log.debug "Using IP: $ip and port: $port for device: ${device.id}"
     return convertHexToIP(ip) + ":" + convertHexToInt(port)
-    //return convertHexToIP(ip) + ":80"
 }
 
 private Integer convertHexToInt(hex) {
