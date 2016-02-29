@@ -113,7 +113,7 @@ Map yamahasDiscovered() {
 	def verifiedYamahas = getVerifiedYamahaDevice()
 	def map = [:]
 	verifiedYamahas.each {
-		map["${it.value.name}"] = "${it.value.description}"
+        map["${it.value.ip}:${it.value.port}"] = "${it.value.name}"
 	}
 	map
 }
@@ -199,15 +199,18 @@ private refreshAll(){
 def addYamaha() {
 	def devices = getVerifiedYamahaDevice()
 	def runSubscribe = false
-   
+	log.debug "Selected Yamahas: ${selectedYamaha}"
+    //def map = [selectedYamaha]
 	selectedYamaha.each { dni ->
     	log.trace "Adding device: ${dni}"
 		def d = getChildDevice(dni)
 		if(!d) {
-			def newDevice = devices.find { it.value.name == dni }
+			def newDevice = devices.find { (it.value.ip + ":" + it.value.port) == dni }
 			log.trace "New Yamaha device: $newDevice; ID: $dni"
-			d = addChildDevice("abucher", "Yamaha ${newDevice?.value.description}", dni, newDevice?.value.hub, [label:"${newDevice?.value.name}"])
-			log.trace "Created ${d.displayName} Yamaha device with ID: $dni"
+			d = addChildDevice("abucher", "Yamaha ${newDevice?.value.description}", "${newDevice?.value.ip}:0050", newDevice?.value.hub,
+            	[label:"${newDevice?.value.name}", description:"${newDevice?.value.description}",
+                 model:"${newDevice?.value.model}", systemId:"${newDevice?.value.systemId}", address:"${newDevice?.value.ip}:${newDevice?.value.port}"])
+			log.debug "Created ${d.displayName} Yamaha device with ID: $dni"
 
 			d.setModel(newDevice?.value.model)
 			log.trace "Set Yamaha device ${d.displayName} model to ${newDevice?.value.model}"
@@ -286,7 +289,31 @@ def locationHandler(evt) {
 				else {
 					log.error "SSDP: XML response returned a device that does not exist."
 				}
-			}
+			} else if (body.Main_Zone?.text()) {
+            	log.trace "XML: Yamaha settings"
+                
+                def powerControl = body.Main_Zone.Basic_Status.Power_Control.Power
+    			def volume = body.Main_Zone.Basic_Status.Volume.Lvl.Val.toInteger()*10**-(body.Main_Zone.Basic_Status.Volume.Lvl.Exp.toInteger())
+                def volumeUnit = body.Main_Zone.Basic_Status.Volume.Lvl.Unit
+                def mute = body.Main_Zone.Basic_Status.Volume.Mute
+   	 			def inputSelection = body.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title
+    
+    			def yamahas = getYamahaDevice()
+				def device = yamahas.find {it?.key?.contains(body?.device?.UDN?.text())}
+				if (device) {
+                    log.trace "XML: Yamaha settings... device found!"
+                    
+                    log.debug "Stored: powerControl: ${powerControl}"
+                    log.debug "Stored: volume: ${volume}"
+                    log.debug "Stored: volumeUnit: ${volumeUnit}"
+                    log.debug "Stored: mute: ${mute}"
+                    log.debug "Stored: inputSelection: ${inputSelection}"
+                } else {
+                	log.trace "XML: Yamaha settings... no device found."
+                }
+            } else {
+            	log.trace "XML: Unknown: ${body}"
+            }
         } else {
         		log.trace "SSDP: Unknown respose type: ${type}"
         }
@@ -302,42 +329,42 @@ private def parseEventMessage(Map event) {
 private def parseEventMessage(String description) {
 	def event = [:]
 	def parts = description.split(',')
-    log.trace "Parsing event message..."
+    log.trace "SmartApp: Parsing event message..."
     
 	parts.each { part ->
 		part = part.trim()
 		if (part.startsWith('devicetype:')) {
 			def valueString = part.split(":")[1].trim()
 			event.devicetype = valueString
-            log.trace "Event message: devicetype: ${event.devicetype}"
+            //log.trace "Event message: devicetype: ${event.devicetype}"
 		}
 		else if (part.startsWith('mac:')) {
 			def valueString = part.split(":")[1].trim()
 			if (valueString) {
 				event.mac = valueString
 			}
-            log.trace "Event message: mac: ${event.mac}"
+            //log.trace "Event message: mac: ${event.mac}"
 		}
 		else if (part.startsWith('networkAddress:')) {
 			def valueString = part.split(":")[1].trim()
 			if (valueString) {
 				event.ip = valueString
 			}
-            log.trace "Event message: ip: ${event.ip}"
+            //log.trace "Event message: ip: ${event.ip}"
 		}
 		else if (part.startsWith('deviceAddress:')) {
 			def valueString = part.split(":")[1].trim()
 			if (valueString) {
 				event.port = valueString
 			}
-            log.trace "Event message: port: ${event.port}"
+            //log.trace "Event message: port: ${event.port}"
 		}
 		else if (part.startsWith('ssdpPath:')) {
 			def valueString = part.split(":")[1].trim()
 			if (valueString) {
 				event.ssdpPath = valueString
 			}
-            log.trace "Event message: ssdpPath: ${event.ssdpPath}"
+            //log.trace "Event message: ssdpPath: ${event.ssdpPath}"
 		}
 		else if (part.startsWith('ssdpUSN:')) {
 			part -= "ssdpUSN:"
@@ -345,7 +372,7 @@ private def parseEventMessage(String description) {
 			if (valueString) {
 				event.ssdpUSN = valueString
 			}
-            log.trace "Event message: ssdpUSN: ${event.ssdpUSN}"
+            //log.trace "Event message: ssdpUSN: ${event.ssdpUSN}"
 		}
 		else if (part.startsWith('ssdpTerm:')) {
 			part -= "ssdpTerm:"
@@ -353,7 +380,7 @@ private def parseEventMessage(String description) {
 			if (valueString) {
 				event.ssdpTerm = valueString
 			}
-            log.trace "Event message: ssdpTerm: ${event.ssdpTerm}"
+            //log.trace "Event message: ssdpTerm: ${event.ssdpTerm}"
 		}
 		else if (part.startsWith('headers')) {
 			part -= "headers:"
@@ -361,7 +388,7 @@ private def parseEventMessage(String description) {
 			if (valueString) {
 				event.headers = valueString
 			}
-            log.trace "Event message: headers: ${event.headers}"
+            //log.trace "Event message: headers: ${event.headers}"
 		}
 		else if (part.startsWith('body')) {
 			part -= "body:"
@@ -369,7 +396,7 @@ private def parseEventMessage(String description) {
 			if (valueString) {
 				event.body = valueString
 			}
-            log.trace "Event message: body: ${event.body}"
+            //log.trace "Event message: body: ${event.body}"
 		}
 	}
 
@@ -380,7 +407,7 @@ private def parseEventMessage(String description) {
  * Child device methods.
  */
 def parse(childDevice, description) {
-	log.trace "Parse..."
+	log.trace "Parsing child event..."
 	def parsedEvent = parseEventMessage(description)
 
 	if (parsedEvent.headers && parsedEvent.body) {
