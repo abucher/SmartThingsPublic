@@ -13,11 +13,6 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
-preferences {
-	input("ipAddress", "text", title: "IP Address", description: "Your Yamaha receiver IP address", required: true)
-    input("port", "number", title: "Port", description: "Your Yamaha receiver port", defaultValue: 80, required: false)
-	}
- 
 metadata {
 	definition (name: "Yamaha AV Receiver", namespace: "abucher", author: "Aaron C. Bucher") {
     	capability "polling"
@@ -65,27 +60,17 @@ metadata {
 
 // parse events into attributes
 def parse(String description) {
-	log.debug "Parsing '${description}'"
-	// TODO: handle 'switch' attribute
-
-}
-
-// utilities
-def sendXML(String cmd, String xml, String zone = "Main_Zone") {
-	def params  = [
-    	uri: "http://${settings.ipAddress}:${settings.port}",
-        path: "/YamahaRemoteControl/ctrl",
-        body: "<YAMAHA_AV cmd=\"${cmd}\"><${zone}>${xml}</${zone}></YAMAHA_AV>"
-        ]
-        
-    log.debug "Sending \"${params.body}\" to ${params.uri}${params.path}"
-
+	log.debug "Device Handler: Parsing message..."
+	def results = []
     try {
-    	httpPost(params) { resp ->
-        	log.debug "Response status: ${resp.status}"
-
-            if (cmd == "GET") {
-    			def powerControl = resp.data.Main_Zone.Basic_Status.Power_Control.Power
+    	def msg = parseLanMessage(description)
+        
+        if (msg.body) {
+        	log.trace "Device Handler: Received XML message: ${msg.body}"
+        	xml = parseXml(msg.body)
+            
+            if (xml.Main_Zone?.Basic_Status?.text()) {
+            	def powerControl = resp.data.Main_Zone.Basic_Status.Power_Control.Power
     			def volume = resp.data.Main_Zone.Basic_Status.Volume.Lvl.Val.toInteger()*10**-(resp.data.Main_Zone.Basic_Status.Volume.Lvl.Exp.toInteger())
                 def volumeUnit = resp.data.Main_Zone.Basic_Status.Volume.Lvl.Unit
                 def mute = resp.data.Main_Zone.Basic_Status.Volume.Mute
@@ -97,36 +82,74 @@ def sendXML(String cmd, String xml, String zone = "Main_Zone") {
                 log.debug "Stored: mute: ${mute}"
     			log.debug "Stored: inputSelection: ${inputSelection}"
             }
-    	}
-	} catch (e) {
-    	log.error "sendXML error: ${e}"
-	}   
+        } else {
+        	log.debug "Device Handler: Received non-XML message: ${msg.body}"
+        }
+    } catch (Throwable t) {
+    	log.error "Error parsing event: ${t}"
+    }
 }
 
-/* def updateSettings(HttpResponseDecorator config) {
-    //def rawXML = '<YAMAHA_AV rsp="GET" RC="0"><Main_Zone><Basic_Status><Power_Control><Power>Standby</Power><Sleep>Off</Sleep></Power_Control><Volume><Lvl><Val>-200</Val><Exp>1</Exp><Unit>dB</Unit></Lvl><Mute>Off</Mute></Volume><Input><Input_Sel>AV1</Input_Sel><Current_Input_Sel_Item><Param>AV1</Param><RW>RW</RW><Title>AndroidTV</Title><Icon><On>/YamahaRemoteControl/Icons/icon007.png</On><Off>/YamahaRemoteControl/Icons/icon006.png</Off></Icon><Src_Name></Src_Name><Src_Number>1</Src_Number></Current_Input_Sel_Item></Input><Surround><Program_Sel><Current><Straight>Off</Straight><Enhancer>On</Enhancer><Sound_Program>7ch Stereo</Sound_Program></Current></Program_Sel></Surround></Basic_Status></Main_Zone></YAMAHA_AV>'
-    //log.debug "Poll: Raw XML: ${rawXML}"
+// utilities
+def sendXml(String cmd, String xml, String zone = "Main_Zone") {
+	def host = getHostAddress()
+	def body = "<YAMAHA_AV cmd=\"${cmd}\"><${zone}>${xml}</${zone}></YAMAHA_AV>"
     
-    //def config = parseXml(rawXML)
-    
-}*/
+    log.debug "Sending \"${body}\" to ${host}"
+
+    def result = new physicalgraph.device.HubAction(
+     	"""POST /YamahaRemoteControl/ctrl HTTP/1.1\r\nHOST: ${host}\r\n\r\n${body}\r\n\r\n""",
+        physicalgraph.device.Protocol.LAN,
+        device.deviceNetworkId
+    )
+    result
+}
 
 // commands
 def powerOn() {
 	log.debug "Executing 'powerOn'"
-    sendXML("PUT", "<Power_Control><Power>On</Power></Power_Control>")      
+    sendXml("PUT", "<Power_Control><Power>On</Power></Power_Control>")      
 }
 
 def powerStandby() {
 	log.debug "Executing 'powerStandby'"
-   	sendXML("PUT", "<Power_Control><Power>Standby</Power></Power_Control>")
+   	sendXml("PUT", "<Power_Control><Power>Standby</Power></Power_Control>")
 }
 
 def poll() {
 	log.debug "Executing 'poll'"
-    sendXML("GET", "<Basic_Status>GetParam</Basic_Status>")
+    sendXml("GET", "<Basic_Status>GetParam</Basic_Status>")
 }
 
 def refresh() {
 	poll()
+}
+
+private getHostAddress() {
+    def ip = getDataValue("ip")
+    def port = getDataValue("port")
+    
+    if (!ip || !port) {
+    	log.trace "device.deviceNetworkId: ${device.deviceNetworkId}"
+        log.trace "device.label: ${device.label}"
+        def parts = device.deviceNetworkId.split(":")
+        if (parts.length == 2) {
+            ip = parts[0]
+            port = parts[1]
+        } else {
+            log.warn "Can't figure out ip and port for device: ${device.id}"
+        }
+    }
+
+    log.debug "Using IP: $ip and port: $port for device: ${device.id}"
+    return convertHexToIP(ip) + ":" + convertHexToInt(port)
+    //return convertHexToIP(ip) + ":80"
+}
+
+private Integer convertHexToInt(hex) {
+    return Integer.parseInt(hex,16)
+}
+
+private String convertHexToIP(hex) {
+    return [convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
 }
