@@ -34,8 +34,8 @@ metadata {
 
 	tiles(scale: 2) {
 		standardTile("yamahaReceiver", "device.powerControl", width: 2, height: 2, canChangeIcon: true) {
-    		state("off", label: '${name}', action: "powerOn", icon: "st.switches.switch.off", backgroundColor: "#ffffff")
-    		state("on", label: '${name}', action: "powerStandby", icon: "st.switches.switch.on", backgroundColor: "#E60000")
+    		state("Standby", label: '${name}', action: "powerOn", icon: "st.switches.switch.off", backgroundColor: "#ffffff")
+    		state("On", label: '${name}', action: "powerStandby", icon: "st.switches.switch.on", backgroundColor: "#E60000")
         }
         valueTile("volume", "device.volume", width: 2, height: 2) {
         	state("volume", label: '${currentValue}', textColor: "#000000", backgroundColor: "#ffffff")
@@ -65,16 +65,16 @@ def parse(String description) {
     try {
     	def msg = parseLanMessage(description)
         
-        if (msg.body) {
+        if (msg.xml) {
         	log.trace "Device Handler: Received XML message: ${msg.body}"
-        	xml = parseXml(msg.body)
+        	//xml = parseXml(msg.body)
             
-            if (xml.Main_Zone?.Basic_Status?.text()) {
-            	def powerControl = resp.data.Main_Zone.Basic_Status.Power_Control.Power
-    			def volume = resp.data.Main_Zone.Basic_Status.Volume.Lvl.Val.toInteger()*10**-(resp.data.Main_Zone.Basic_Status.Volume.Lvl.Exp.toInteger())
-                def volumeUnit = resp.data.Main_Zone.Basic_Status.Volume.Lvl.Unit
-                def mute = resp.data.Main_Zone.Basic_Status.Volume.Mute
-   	 			def inputSelection = resp.data.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title
+            if (msg.xml.Main_Zone?.Basic_Status?.text()) {
+            	def powerControl = msg.xml.Main_Zone.Basic_Status.Power_Control.Power
+    			def volume = msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Val.toInteger()*10**-(msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Exp.toInteger())
+                def volumeUnit = msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Unit
+                def mute = msg.xml.Main_Zone.Basic_Status.Volume.Mute
+   	 			def inputSelection = msg.xml.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title
     
     			log.debug "Stored: powerControl: ${powerControl}"
     			log.debug "Stored: volume: ${volume}"
