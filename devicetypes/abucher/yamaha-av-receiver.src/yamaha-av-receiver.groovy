@@ -34,21 +34,19 @@ metadata {
 
 	tiles(scale: 2) {
 		standardTile("yamahaReceiver", "device.powerControl", width: 2, height: 2, canChangeIcon: true) {
-    		state("Standby", label: '${name}', action: "powerOn", icon: "st.switches.switch.off", backgroundColor: "#ffffff")
-    		state("On", label: '${name}', action: "powerStandby", icon: "st.switches.switch.on", backgroundColor: "#E60000")
+    		state "Standby", label: '${name}', action: "powerOn", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
+    		state "On", label: '${name}', action: "powerStandby", icon: "st.switches.switch.on", backgroundColor: "#E60000"
         }
         valueTile("volume", "device.volume", width: 2, height: 2) {
-        	state("volume", label: '${currentValue}', textColor: "#000000", backgroundColor: "#ffffff")
+        	state "volume", label: '${currentValue} dB', textColor: "#000000", backgroundColor: "#ffffff"
         }
         standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
         	state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
     	}
         /*multiAttributeTile(name: "yamahaReceiver", type: "generic", width: 6, height: 4) {
   			tileAttribute("device.powerControl", key: "PRIMARY_CONTROL") {
-            	attributeState "off", label: '${name}', icon: "st.switches.switch.off", backgroundColor: "#ffffff"
-                attributeState "on", label: '${name}', icon: "st.switches.switch.on", backgroundColor: "#E60000"
-    			//attributeState("on", label:'${device.volume}', unit:"")
-                //attributeState("off", label:'off', unit:"")
+            	attributeState "Standby", label: '${name}', action: "powerOn", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
+                attributeState "On", label: '${name}', action: "powerStandby", icon: "st.switches.switch.on", backgroundColor: "#E60000"
   			}
         }*/
 	
@@ -67,7 +65,6 @@ def parse(String description) {
         
         if (msg.xml) {
         	log.trace "Device Handler: Received XML message: ${msg.body}"
-        	//xml = parseXml(msg.body)
             
             if (msg.xml.Main_Zone?.Basic_Status?.text()) {
             	def powerControl = msg.xml.Main_Zone.Basic_Status.Power_Control.Power
@@ -75,12 +72,12 @@ def parse(String description) {
                 def volumeUnit = msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Unit
                 def mute = msg.xml.Main_Zone.Basic_Status.Volume.Mute
    	 			def inputSelection = msg.xml.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title
-    
-    			log.debug "Stored: powerControl: ${powerControl}"
-    			log.debug "Stored: volume: ${volume}"
-    			log.debug "Stored: volumeUnit: ${volumeUnit}"
-                log.debug "Stored: mute: ${mute}"
-    			log.debug "Stored: inputSelection: ${inputSelection}"
+                
+                sendEvent(name: 'powerControl', value: powerControl, displayed: false)
+                sendEvent(name: 'volume', value: volume, displayed: false)
+                sendEvent(name: 'volumeUnit', value: volumeUnit, displayed: false)
+                sendEvent(name: 'mute', value: mute, displayed: false)
+                sendEvent(name: 'inputSelection', value: inputSelection, displayed: false)
             }
         } else {
         	log.debug "Device Handler: Received non-XML message: ${msg.body}"
@@ -105,15 +102,21 @@ def sendXml(String cmd, String xml, String zone = "Main_Zone") {
     result
 }
 
-// commands
+/**
+  * Power commands.
+  */
+private powerControl(String setting) {
+	log.debug "Setting power to ${setting}"
+    sendXml("PUT", "<Power_Control><Power>${setting}</Power></Power_Control>")
+    sendEvent(name: 'powerControl', value: setting)
+}
+
 def powerOn() {
-	log.debug "Executing 'powerOn'"
-    sendXml("PUT", "<Power_Control><Power>On</Power></Power_Control>")      
+	powerControl("On")      
 }
 
 def powerStandby() {
-	log.debug "Executing 'powerStandby'"
-   	sendXml("PUT", "<Power_Control><Power>Standby</Power></Power_Control>")
+	powerControl("Standby")
 }
 
 def poll() {
