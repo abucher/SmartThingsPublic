@@ -33,32 +33,45 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-		standardTile("yamahaReceiver", "device.powerControl", width: 2, height: 2, canChangeIcon: true) {
-    		state "Standby", label: '${name}', action: "powerOn", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
-    		state "On", label: '${name}', action: "powerStandby", icon: "st.switches.switch.on", backgroundColor: "#E60000"
+        /*multiAttributeTile(name: "yamahaReceiver", type: "thermostat", width: 6, height: 4) {
+  			tileAttribute("device.powerControl", key: "PRIMARY_CONTROL") {
+            	attributeState("Standby", label: '${name}', action: "powerOn", icon: "st.switches.switch.off", backgroundColor: "#ffffff")
+                attributeState("On", label: '${name}', action: "powerStandby", icon: "st.switches.switch.on", backgroundColor: "#E60000")
+  			}
+        	tileAttribute("device.inputSelection", key: "SECONDARY_CONTROL") {
+            	attributeState("default", label: '${currentValue}', textColor: "#000000")
+            }
+            tileAttribute("device.volume", key: "VALUE_CONTROL") {
+            	attributeState("default", action: "setVolume")
+            }
+        }*/
+        standardTile("yamahaReceiver", "device.powerControl", width: 2, height: 2, canChangeIcon: true) {
+    		state("Standby", label: '${name}', action: "powerOn", icon: "st.switches.switch.off", backgroundColor: "#ffffff")
+    		state("On", label: '${name}', action: "powerStandby", icon: "st.switches.switch.on", backgroundColor: "#E60000")
         }
-        valueTile("volume", "device.volume", width: 2, height: 2) {
-        	state "volume", label: '${currentValue} dB', textColor: "#000000", backgroundColor: "#ffffff"
+        valueTile("inputSelection", "device.inputSelection", width: 4, height: 2) {
+        	state("default", label: '${currentValue}')
         }
         standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-        	state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
+        	state("default", action:"refresh.refresh", icon:"st.secondary.refresh")
     	}
-        /*multiAttributeTile(name: "yamahaReceiver", type: "generic", width: 6, height: 4) {
-  			tileAttribute("device.powerControl", key: "PRIMARY_CONTROL") {
-            	attributeState "Standby", label: '${name}', action: "powerOn", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
-                attributeState "On", label: '${name}', action: "powerStandby", icon: "st.switches.switch.on", backgroundColor: "#E60000"
-  			}
-        }*/
+        valueTile("volume", "device.volume", width: 2, height: 2) {
+        	state("default", label: '${currentValue} dB', textColor: "#000000", backgroundColor: "#ffffff")
+        }
+        standardTile("volumeUp", "device.volume", canChangeIcon: false, inactiveLabel: false) {
+            state("default", label:'  ', action:"volumeUp", icon:"st.thermostat.thermostat-up")
+        }
+        standardTile("volumeDown", "device.volume", canChangeIcon: false, inactiveLabel: false) {
+            state("default", label:'  ', action:"volumeDown", icon:"st.thermostat.thermostat-down")
+        }
 	
     	main("yamahaReceiver")
-        details(["yamahaReceiver", "volume", "refresh"])
-        //details("yamahaReceiver")
+        details(["yamahaReceiver", "inputSelection", "volumeUp", "volumeDown", "volume", "refresh"])
     }
 }
 
 // parse events into attributes
 def parse(String description) {
-	log.debug "Device Handler: Parsing message..."
 	def results = []
     try {
     	def msg = parseLanMessage(description)
@@ -85,6 +98,7 @@ def parse(String description) {
     } catch (Throwable t) {
     	log.error "Error parsing event: ${t}"
     }
+    results
 }
 
 // utilities
@@ -105,22 +119,19 @@ def sendXml(String cmd, String xml, String zone = "Main_Zone") {
 /**
   * Power commands.
   */
-private powerControl(String setting) {
-	log.debug "Setting power to ${setting}"
+private setPower(String setting) {
     sendXml("PUT", "<Power_Control><Power>${setting}</Power></Power_Control>")
-    sendEvent(name: 'powerControl', value: setting)
 }
 
 def powerOn() {
-	powerControl("On")      
+	setPower("On")
 }
 
 def powerStandby() {
-	powerControl("Standby")
+	setPower("Standby")
 }
 
 def poll() {
-	log.debug "Executing 'poll'"
     sendXml("GET", "<Basic_Status>GetParam</Basic_Status>")
 }
 
