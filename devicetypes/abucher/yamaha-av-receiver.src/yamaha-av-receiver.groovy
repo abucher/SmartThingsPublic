@@ -77,7 +77,7 @@ def parse(String description) {
     	def msg = parseLanMessage(description)
         
         if (msg.xml) {
-        	log.trace "Device Handler: Received XML message: ${msg.body}"
+        	log.trace "Received XML message: ${msg.body}"
             
             if (msg.xml.Main_Zone?.Basic_Status?.text()) {
             	def powerControl = msg.xml.Main_Zone.Basic_Status.Power_Control.Power
@@ -91,6 +91,8 @@ def parse(String description) {
                 sendEvent(name: 'volumeUnit', value: volumeUnit, displayed: false)
                 sendEvent(name: 'mute', value: mute, displayed: false)
                 sendEvent(name: 'inputSelection', value: inputSelection, displayed: false)
+            } else {
+            	log.trace "Received unknown XML message."
             }
         } else {
         	log.debug "Device Handler: Received non-XML message: ${msg.body}"
@@ -120,6 +122,7 @@ def sendXml(String cmd, String xml, String zone = "Main_Zone") {
   * Power commands.
   */
 private setPower(String setting) {
+	sendEvent(name: 'powerControl', value: setting, displayed: true)
     sendXml("PUT", "<Power_Control><Power>${setting}</Power></Power_Control>")
 }
 
