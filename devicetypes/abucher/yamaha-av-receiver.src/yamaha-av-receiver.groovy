@@ -20,12 +20,15 @@ metadata {
         
         attribute "powerControl", "string"
         attribute "volume", "number"
+        attribute "volumeExponent", "number"
         attribute "volumeUnit", "string"
         attribute "inputSelection", "string"
         attribute "mute", "string"
         
         command "powerOn"
         command "powerStandby"
+        command "volumeUp"
+        command "volumeDown"
 	}
 
 	simulator {
@@ -58,15 +61,15 @@ metadata {
         valueTile("volume", "device.volume", width: 2, height: 2) {
         	state("default", label: '${currentValue} dB', textColor: "#000000", backgroundColor: "#ffffff")
         }
-        standardTile("volumeUp", "device.volume", canChangeIcon: false, inactiveLabel: false) {
+        standardTile("volumeUp", "device.volume", width: 2, height: 2, canChangeIcon: false, inactiveLabel: false) {
             state("default", label:'  ', action:"volumeUp", icon:"st.thermostat.thermostat-up")
         }
-        standardTile("volumeDown", "device.volume", canChangeIcon: false, inactiveLabel: false) {
+        standardTile("volumeDown", "device.volume", width: 2, height: 2, canChangeIcon: false, inactiveLabel: false) {
             state("default", label:'  ', action:"volumeDown", icon:"st.thermostat.thermostat-down")
         }
 	
     	main("yamahaReceiver")
-        details(["yamahaReceiver", "inputSelection", "volumeUp", "volumeDown", "volume", "refresh"])
+        details(["yamahaReceiver", "inputSelection", "volumeDown", "volume", "volumeUp", "refresh"])
     }
 }
 
@@ -81,12 +84,14 @@ def parse(String description) {
             
             if (msg.xml.Main_Zone?.Basic_Status?.text()) {
             	def powerControl = msg.xml.Main_Zone.Basic_Status.Power_Control.Power
-    			def volume = msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Val.toInteger()*10**-(msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Exp.toInteger())
+                def volumeExponent = msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Exp.toInteger()
+    			def volume = msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Val.toInteger()*10**-(volumeExponent)
                 def volumeUnit = msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Unit
                 def mute = msg.xml.Main_Zone.Basic_Status.Volume.Mute
    	 			def inputSelection = msg.xml.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title
                 
                 sendEvent(name: 'powerControl', value: powerControl, displayed: false)
+                sendEvent(name: 'volumeExponent', value: volumeExponent, displayed: false)
                 sendEvent(name: 'volume', value: volume, displayed: false)
                 sendEvent(name: 'volumeUnit', value: volumeUnit, displayed: false)
                 sendEvent(name: 'mute', value: mute, displayed: false)
@@ -119,10 +124,10 @@ def sendXml(String cmd, String xml, String zone = "Main_Zone") {
 }
 
 /**
-  * Power commands.
+  * Power.
   */
 private setPower(String setting) {
-	sendEvent(name: 'powerControl', value: setting, displayed: true)
+	sendEvent(name: 'powerControl', value: setting, displayed: false)
     sendXml("PUT", "<Power_Control><Power>${setting}</Power></Power_Control>")
 }
 
@@ -134,6 +139,27 @@ def powerStandby() {
 	setPower("Standby")
 }
 
+/*
+ * Volume.
+ */
+def setVolume(Integer setting) {
+	def newVolume = device.currentValue("volume") + setting*10**-device.currentValue("volumeExponent")
+
+	sendEvent(name: 'volume', value: newVolume, displayed: false)
+    sendXml("PUT", "<Volume><Lvl><Val>${(newVolume*10**device.currentValue("volumeExponent")).toInteger()}</Val><Exp>${device.currentValue("volumeExponent")}</Exp><Unit>${device.currentValue("volumeUnit")}</Unit></Lvl></Volume>")
+}
+
+def volumeUp() {
+	setVolume(5)
+}
+
+def volumeDown() {
+	setVolume(-5)
+}
+
+/*
+ * Status.
+ */
 def poll() {
     sendXml("GET", "<Basic_Status>GetParam</Basic_Status>")
 }
