@@ -289,28 +289,6 @@ def locationHandler(evt) {
 				else {
 					log.error "SSDP: XML response returned a device that does not exist."
 				}
-			} else if (body.Main_Zone?.text()) {
-            	log.trace "XML: Yamaha settings"
-                
-                def powerControl = body.Main_Zone.Basic_Status.Power_Control.Power
-    			def volume = body.Main_Zone.Basic_Status.Volume.Lvl.Val.toInteger()*10**-(body.Main_Zone.Basic_Status.Volume.Lvl.Exp.toInteger())
-                def volumeUnit = body.Main_Zone.Basic_Status.Volume.Lvl.Unit
-                def mute = body.Main_Zone.Basic_Status.Volume.Mute
-   	 			def inputSelection = body.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title
-    
-    			def yamahas = getYamahaDevice()
-				def device = yamahas.find {it?.key?.contains(body?.device?.UDN?.text())}
-				if (device) {
-                    log.trace "XML: Yamaha settings... device found!"
-                    
-                    log.debug "Stored: powerControl: ${powerControl}"
-                    log.debug "Stored: volume: ${volume}"
-                    log.debug "Stored: volumeUnit: ${volumeUnit}"
-                    log.debug "Stored: mute: ${mute}"
-                    log.debug "Stored: inputSelection: ${inputSelection}"
-                } else {
-                	log.trace "XML: Yamaha settings... no device found."
-                }
             } else {
             	log.trace "XML: Unknown: ${body}"
             }
