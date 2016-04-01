@@ -155,6 +155,12 @@ def volumeUp() {
 def volumeDown() {
 	setVolume(-5)
 }
+/*
+ * Scenes
+ */
+def getSecenes() {
+	sendXml("GET", "<Scene><Scene_Sel_Item>GetParam</Scene_Sel_Item></Scene>")
+}
 
 /*
  * Status.
