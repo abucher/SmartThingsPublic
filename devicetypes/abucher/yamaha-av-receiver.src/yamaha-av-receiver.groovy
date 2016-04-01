@@ -15,18 +15,16 @@
  */
 metadata {
 	definition (name: "Yamaha AV Receiver", namespace: "abucher", author: "Aaron C. Bucher") {
-    	capability "polling"
+    	capability "switch"
+        capability "polling"
         capability "refresh"
         
-        attribute "powerControl", "string"
         attribute "volume", "number"
         attribute "volumeExponent", "number"
         attribute "volumeUnit", "string"
         attribute "inputSelection", "string"
         attribute "mute", "string"
         
-        command "powerOn"
-        command "powerStandby"
         command "volumeUp"
         command "volumeDown"
 	}
@@ -48,9 +46,9 @@ metadata {
             	attributeState("default", action: "setVolume")
             }
         }*/
-        standardTile("yamahaReceiver", "device.powerControl", width: 2, height: 2, canChangeIcon: true) {
-    		state("Standby", label: '${name}', action: "powerOn", icon: "st.switches.switch.off", backgroundColor: "#ffffff")
-    		state("On", label: '${name}', action: "powerStandby", icon: "st.switches.switch.on", backgroundColor: "#E60000")
+        standardTile("yamahaReceiver", "device.switch", width: 2, height: 2, canChangeIcon: true) {
+    		state("off", label: '${name}', action: "on", icon: "st.switches.switch.off", backgroundColor: "#ffffff")
+    		state("on", label: '${name}', action: "off", icon: "st.switches.switch.on", backgroundColor: "#E60000")
         }
         valueTile("inputSelection", "device.inputSelection", width: 4, height: 2) {
         	state("default", label: '${currentValue}')
@@ -90,7 +88,11 @@ def parse(String description) {
                 def mute = msg.xml.Main_Zone.Basic_Status.Volume.Mute
    	 			def inputSelection = msg.xml.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title
                 
-                sendEvent(name: 'powerControl', value: powerControl, displayed: false)
+                if (powerControl == "Standby") {
+                	powerControl = "off"
+                }
+                
+                sendEvent(name: 'switch', value: powerControl.toLowerCase(), displayed: false)
                 sendEvent(name: 'volumeExponent', value: volumeExponent, displayed: false)
                 sendEvent(name: 'volume', value: volume, displayed: false)
                 sendEvent(name: 'volumeUnit', value: volumeUnit, displayed: false)
@@ -126,17 +128,14 @@ def sendXml(String cmd, String xml, String zone = "Main_Zone") {
 /**
   * Power.
   */
-private setPower(String setting) {
-	sendEvent(name: 'powerControl', value: setting, displayed: false)
-    sendXml("PUT", "<Power_Control><Power>${setting}</Power></Power_Control>")
+def on() {
+	sendEvent(name: 'switch', value: 'on', displayed: false)
+    sendXml("PUT", "<Power_Control><Power>On</Power></Power_Control>")
 }
 
-def powerOn() {
-	setPower("On")
-}
-
-def powerStandby() {
-	setPower("Standby")
+def off() {
+	sendEvent(name: 'switch', value: 'off', displayed: false)
+    sendXml("PUT", "<Power_Control><Power>Standby</Power></Power_Control>")
 }
 
 /*
