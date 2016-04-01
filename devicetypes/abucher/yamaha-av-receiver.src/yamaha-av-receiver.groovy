@@ -48,7 +48,7 @@ metadata {
         }*/
         standardTile("yamahaReceiver", "device.switch", width: 2, height: 2, canChangeIcon: true) {
     		state("off", label: '${name}', action: "on", icon: "st.switches.switch.off", backgroundColor: "#ffffff")
-    		state("on", label: '${name}', action: "off", icon: "st.switches.switch.on", backgroundColor: "#E60000")
+    		state("on", label: '${name}', action: "off", icon: "st.switches.switch.on", backgroundColor: "#79b821")
         }
         valueTile("inputSelection", "device.inputSelection", width: 4, height: 2) {
         	state("default", label: '${currentValue}')
@@ -110,7 +110,9 @@ def parse(String description) {
     results
 }
 
-// utilities
+/*
+ * XML
+ */
 def sendXml(String cmd, String xml, String zone = "Main_Zone") {
 	def host = getHostAddress()
 	def body = "<YAMAHA_AV cmd=\"${cmd}\"><${zone}>${xml}</${zone}></YAMAHA_AV>"
@@ -126,7 +128,7 @@ def sendXml(String cmd, String xml, String zone = "Main_Zone") {
 }
 
 /**
-  * Power.
+  * Power
   */
 def on() {
 	sendEvent(name: 'switch', value: 'on', displayed: false)
@@ -139,7 +141,7 @@ def off() {
 }
 
 /*
- * Volume.
+ * Volume
  */
 def setVolume(Integer setting) {
 	def newVolume = device.currentValue("volume") + setting*10**-device.currentValue("volumeExponent")
@@ -163,7 +165,7 @@ def getSecenes() {
 }
 
 /*
- * Status.
+ * Status
  */
 def poll() {
     sendXml("GET", "<Basic_Status>GetParam</Basic_Status>")
@@ -173,6 +175,9 @@ def refresh() {
 	poll()
 }
 
+/*
+ * Utilities
+ */
 private getHostAddress() {
     def ip = getDataValue("ip")
     def port = getDataValue("port")
