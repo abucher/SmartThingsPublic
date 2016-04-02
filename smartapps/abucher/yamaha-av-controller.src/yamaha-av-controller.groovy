@@ -25,7 +25,23 @@ definition(
 
 
 preferences {
-	page(name:"yamahaDiscovery", title:"Yamaha Device Setup", content:"deviceDiscovery", refreshTimeout:5)
+	page(name:"main") {
+        section("Device Setup") {
+        	href(name: "discover", title: "Discover Yamaha devices", required: false, page: "yamahaDiscovery")
+        }
+        section("Configure Routines") {
+        	href(name: "routines", title: "Configure routine actions", required: false, page: "yamahaRoutines")
+        }
+    }
+	page(name: "yamahaDiscovery", title: "Yamaha Device Setup", content: "deviceDiscovery", refreshTimeout: 5)
+    page(name: "configureRoutines", title: "Configure Routines", content: "configureRoutines")
+}
+
+/**
+ * Routine configuration.
+ */
+def configureRoutines() {
+	return dynamicPage(name: "configureRoutines", title: "Configure Routines")
 }
 
 /**
