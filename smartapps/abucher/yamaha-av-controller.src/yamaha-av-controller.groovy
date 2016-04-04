@@ -30,18 +30,18 @@ preferences {
         	href(name: "discover", title: "Discover Yamaha devices", required: false, page: "yamahaDiscovery")
         }
         section("Configure Routines") {
-        	href(name: "routines", title: "Configure routine actions", required: false, page: "yamahaRoutines")
+        	href(name: "routines", title: "Configure routine actions", required: false, page: "configureRoutines")
         }
     }
 	page(name: "yamahaDiscovery", title: "Yamaha Device Setup", content: "deviceDiscovery", refreshTimeout: 5)
-    page(name: "configureRoutines", title: "Configure Routines", content: "configureRoutines")
+    page(name: "configureRoutines")
 }
 
 /**
  * Routine configuration.
  */
 def configureRoutines() {
-	return dynamicPage(name: "configureRoutines", title: "Configure Routines")
+	dynamicPage(name: "configureRoutines", title: "Configure Routines")
 }
 
 /**
