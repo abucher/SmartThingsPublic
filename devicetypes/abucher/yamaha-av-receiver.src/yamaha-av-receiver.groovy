@@ -81,19 +81,18 @@ def parse(String description) {
         	log.trace "Received XML message: ${msg.body}"
             
             if (msg.xml.Main_Zone?.Basic_Status?.text()) {
-            	def powerControl = msg.xml.Main_Zone.Basic_Status.Power_Control.Power
-                def volumeExponent = msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Exp.toInteger()
-    			def volume = msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Val.toInteger()*10**-(volumeExponent)
-                def volumeUnit = msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Unit
-                def mute = msg.xml.Main_Zone.Basic_Status.Volume.Mute
-   	 			def inputSelection = msg.xml.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title
-               
-                sendEvent(name: 'switch', value: (powerControl == 'On' ? 'on' : 'off'), displayed: false)
-                sendEvent(name: 'volumeExponent', value: volumeExponent, displayed: false)
-                sendEvent(name: 'volume', value: volume, displayed: false)
-                sendEvent(name: 'volumeUnit', value: volumeUnit, displayed: false)
-                sendEvent(name: 'mute', value: mute, displayed: false)
-                sendEvent(name: 'inputSelection', value: inputSelection, displayed: false)
+                sendEvent(name: 'switch',
+                	value: (msg.xml.Main_Zone.Basic_Status.Power_Control.Power == 'On' ? 'on' : 'off'), displayed: false)
+                sendEvent(name: 'volumeExponent',
+                	value: msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Exp.toInteger(), displayed: false)
+                sendEvent(name: 'volume',
+                	value: msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Val.toInteger()*10**-(msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Exp.toInteger()), displayed: false)
+                sendEvent(name: 'volumeUnit',
+                	value: msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Unit, displayed: false)
+                sendEvent(name: 'mute',
+                	value: msg.xml.Main_Zone.Basic_Status.Volume.Mute, displayed: false)
+                sendEvent(name: 'inputSelection',
+                	value: msg.xml.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title, displayed: false)
             } else {
             	log.trace "Received unknown XML message."
             }
@@ -126,14 +125,17 @@ def sendXml(String cmd, String xml, String zone = "Main_Zone") {
 /**
   * Power
   */
+private setPower(String setting) {
+	sendEvent(name: 'switch', value: (setting == 'On' ? 'on' : 'off'), displayed: false)
+    sendXml("PUT", "<Power_Control><Power>${setting}</Power></Power_Control>")
+}
+
 def on() {
-	sendEvent(name: 'switch', value: 'on', displayed: false)
-    sendXml("PUT", "<Power_Control><Power>On</Power></Power_Control>")
+	setPower("On")
 }
 
 def off() {
-	sendEvent(name: 'switch', value: 'off', displayed: false)
-    sendXml("PUT", "<Power_Control><Power>Standby</Power></Power_Control>")
+	setPower("Standby")
 }
 
 /*
