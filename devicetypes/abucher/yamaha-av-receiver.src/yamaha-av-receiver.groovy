@@ -153,6 +153,7 @@ def volumeUp() {
 def volumeDown() {
 	setVolume(-5)
 }
+
 /*
  * Scenes
  */
