@@ -14,7 +14,7 @@
  *
  */
 metadata {
-	definition (name: "Yamaha AV Receiver", namespace: "abucher", author: "Aaron C. Bucher") {
+	definition (name: "Yamaha AV Receiver", namespace: "abucher", author: "Aaron Bucher") {
     	capability "switch"
         capability "polling"
         capability "refresh"
@@ -87,12 +87,8 @@ def parse(String description) {
                 def volumeUnit = msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Unit
                 def mute = msg.xml.Main_Zone.Basic_Status.Volume.Mute
    	 			def inputSelection = msg.xml.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title
-                
-                if (powerControl == "Standby") {
-                	powerControl = "off"
-                }
-                
-                sendEvent(name: 'switch', value: powerControl.toLowerCase(), displayed: false)
+               
+                sendEvent(name: 'switch', value: (powerControl == 'On' ? 'on' : 'off'), displayed: false)
                 sendEvent(name: 'volumeExponent', value: volumeExponent, displayed: false)
                 sendEvent(name: 'volume', value: volume, displayed: false)
                 sendEvent(name: 'volumeUnit', value: volumeUnit, displayed: false)
