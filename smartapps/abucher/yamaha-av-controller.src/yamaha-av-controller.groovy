@@ -13,7 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
-definition(
+definition (
     name: "Yamaha AV Controller",
     namespace: "abucher",
     author: "Aaron Bucher",
@@ -21,7 +21,8 @@ definition(
     category: "My Apps",
     iconUrl: "https://lh5.ggpht.com/EmAboPYuJpxYeXt7dPUPjqZoNvkhr4r-RW2PKVCePZz-_Qqu6lCSPuocKgNaIgmZuMw=w300-rw",
     iconX2Url: "https://lh5.ggpht.com/EmAboPYuJpxYeXt7dPUPjqZoNvkhr4r-RW2PKVCePZz-_Qqu6lCSPuocKgNaIgmZuMw=w300-rw",
-    iconX3Url: "https://lh5.ggpht.com/EmAboPYuJpxYeXt7dPUPjqZoNvkhr4r-RW2PKVCePZz-_Qqu6lCSPuocKgNaIgmZuMw=w300-rw")
+    iconX3Url: "https://lh5.ggpht.com/EmAboPYuJpxYeXt7dPUPjqZoNvkhr4r-RW2PKVCePZz-_Qqu6lCSPuocKgNaIgmZuMw=w300-rw"
+)
 
 
 preferences {
@@ -41,7 +42,32 @@ preferences {
  * Routine configuration.
  */
 def configureRoutines() {
-	dynamicPage(name: "configureRoutines", title: "Configure Routines")
+	dynamicPage(name: "configureRoutines", title: "Configure Routines") {
+    	section("Routines")
+        state.myRoutines.each {
+    		section() {
+            	href(name: "routine${it.routineName}", title: it.routineTitle, page: "modifyRoutine")
+            }
+        }
+        section() {
+        	href(name: "newRoutine", title: "Add new routine...", required: false, page: "addRoutine")
+        }
+    }
+}
+
+def addRoutine() {
+	dynamicPage(name: "addRoutine", title: "Select routine") {
+        def actions = location.helloHome?.getPhrases()*.label
+        if (actions) {
+            actions.sort()
+            section("Hello Home Actions") {
+                input "action", "enum", title: "Select an action to execute", options: actions
+            }
+        }
+    }
+}
+
+def modifyRoutine() {
 }
 
 /**
@@ -216,7 +242,7 @@ def addYamaha() {
 	def devices = getVerifiedYamahaDevice()
 	def runSubscribe = false
 	log.debug "Selected Yamahas: ${selectedYamaha}"
-    //def map = [selectedYamaha]
+
 	selectedYamaha.each { dni ->
     	log.trace "Adding device: ${dni}"
 		def d = getChildDevice(dni)
