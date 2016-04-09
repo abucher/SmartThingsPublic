@@ -30,12 +30,14 @@ preferences {
         section("Device Setup") {
         	href(name: "discover", title: "Discover Yamaha devices", required: false, page: "yamahaDiscovery")
         }
-        section("Configure Routines") {
+        section("Routine Actions") {
         	href(name: "routines", title: "Configure routine actions", required: false, page: "configureRoutines")
         }
     }
 	page(name: "yamahaDiscovery", title: "Yamaha Device Setup", content: "deviceDiscovery", refreshTimeout: 5)
     page(name: "configureRoutines")
+    page(name: "addRoutine")
+    page(name: "modifyRoutine")
 }
 
 /**
@@ -43,7 +45,6 @@ preferences {
  */
 def configureRoutines() {
 	dynamicPage(name: "configureRoutines", title: "Configure Routines") {
-    	section("Routines")
         state.myRoutines.each {
     		section() {
             	href(name: "routine${it.routineName}", title: it.routineTitle, page: "modifyRoutine")
@@ -56,12 +57,16 @@ def configureRoutines() {
 }
 
 def addRoutine() {
-	dynamicPage(name: "addRoutine", title: "Select routine") {
-        def actions = location.helloHome?.getPhrases()*.label
-        if (actions) {
-            actions.sort()
-            section("Hello Home Actions") {
-                input "action", "enum", title: "Select an action to execute", options: actions
+	dynamicPage(name: "addRoutine", title: "Configure Actions") {
+    	section() {
+        	def actions = location.helloHome?.getPhrases()*.label
+        	if (actions) {
+            	actions.sort()
+                input("routine", "enum", title: "Select a routine", options: actions, required: true, multiple: false)
+                input("yamahaDevice", "enum", title: "Select a Yamaha device", options: getChildDevices(), required: true, multiple: false, submitOnChange: true)
+                //input("routineAction", "enum", title: "Select routine action", options: yamahaDevice?.getActions(), required: true)
+            } else {
+            	paragraph "No routines to configure."
             }
         }
     }
