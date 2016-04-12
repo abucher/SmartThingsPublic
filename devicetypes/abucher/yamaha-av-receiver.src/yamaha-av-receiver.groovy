@@ -27,6 +27,7 @@ metadata {
         
         command "volumeUp"
         command "volumeDown"
+        command "getRoutinePreferences"
 	}
 
 	simulator {
@@ -73,14 +74,15 @@ metadata {
 
 // parse events into attributes
 def parse(String description) {
+	log.debug "[parse] description: ${description}"
 	def results = []
     try {
     	def msg = parseLanMessage(description)
         
-        if (msg.xml) {
-        	log.trace "Received XML message: ${msg.body}"
-            
+        if (msg.xml) {            
             if (msg.xml.Main_Zone?.Basic_Status?.text()) {
+            	log.trace "[parse] Received XML message: Basic Status"
+            
                 sendEvent(name: 'switch',
                 	value: (msg.xml.Main_Zone.Basic_Status.Power_Control.Power == 'On' ? 'on' : 'off'), displayed: false)
                 sendEvent(name: 'volumeExponent',
@@ -93,14 +95,17 @@ def parse(String description) {
                 	value: msg.xml.Main_Zone.Basic_Status.Volume.Mute, displayed: false)
                 sendEvent(name: 'inputSelection',
                 	value: msg.xml.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title, displayed: false)
+            } else if (msg.xml.Main_Zone?.Scene?.text()) {
+            	log.trace "[parse] Received XML message: Scenes"
+                
             } else {
-            	log.trace "Received unknown XML message."
+            	log.trace "[parse] Received XML message: Unknown"
             }
         } else {
-        	log.debug "Device Handler: Received non-XML message: ${msg.body}"
+        	log.debug "[parse] Received non-XML message: ${msg.body}"
         }
     } catch (Throwable t) {
-    	log.error "Error parsing event: ${t}"
+    	log.error "[parse] Error parsing event: ${t}"
     }
     results
 }
@@ -112,7 +117,7 @@ def sendXml(String cmd, String xml, String zone = "Main_Zone") {
 	def host = getHostAddress()
 	def body = "<YAMAHA_AV cmd=\"${cmd}\"><${zone}>${xml}</${zone}></YAMAHA_AV>"
     
-    log.debug "Sending \"${body}\" to ${host}"
+    log.debug "[sendXML] Sending \"${body}\" to ${host}"
 
     def result = new physicalgraph.device.HubAction(
      	"""POST /YamahaRemoteControl/ctrl HTTP/1.1\r\nHOST: ${host}\r\n\r\n${body}\r\n\r\n""",
@@ -141,7 +146,7 @@ def off() {
 /*
  * Volume
  */
-def setVolume(Integer setting) {
+private setVolume(Integer setting) {
 	def newVolume = device.currentValue("volume") + setting*10**-device.currentValue("volumeExponent")
 
 	sendEvent(name: 'volume', value: newVolume, displayed: false)
@@ -159,7 +164,7 @@ def volumeDown() {
 /*
  * Scenes
  */
-def getSecenes() {
+def getScenes() {
 	sendXml("GET", "<Scene><Scene_Sel_Item>GetParam</Scene_Sel_Item></Scene>")
 }
 
@@ -174,6 +179,11 @@ def refresh() {
 	poll()
 }
 
+def getRoutinePreferences() {
+	log.debug "getRoutinePreferences"
+    getScenes()
+}
+
 /*
  * Utilities
  */
@@ -184,6 +194,7 @@ private getHostAddress() {
     if (!ip || !port) {
     	log.trace "device.deviceNetworkId: ${device.deviceNetworkId}"
         log.trace "device.label: ${device.label}"
+        log.trace "device.type: ${device.type}"
         def parts = device.deviceNetworkId.split(":")
         if (parts.length == 2) {
             ip = parts[0]
