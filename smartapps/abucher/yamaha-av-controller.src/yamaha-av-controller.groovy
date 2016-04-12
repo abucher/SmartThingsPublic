@@ -35,44 +35,11 @@ preferences {
         }
     }
 	page(name: "yamahaDiscovery", title: "Yamaha Device Setup", content: "deviceDiscovery", refreshTimeout: 5)
-    page(name: "configureRoutines")
-    page(name: "addRoutine")
-    page(name: "modifyRoutine")
-}
-
-/**
- * Routine configuration.
- */
-def configureRoutines() {
-	dynamicPage(name: "configureRoutines", title: "Configure Routines") {
-        state.myRoutines.each {
-    		section() {
-            	href(name: "routine${it.routineName}", title: it.routineTitle, page: "modifyRoutine")
-            }
-        }
-        section() {
-        	href(name: "newRoutine", title: "Add new routine...", required: false, page: "addRoutine")
+    page(name: "configureRoutines", title: "Configure Routines", install: true, uninstall: true, submitOnChange: true) {
+    	section {
+        	app(name: "yamahaAutomations", appName: "Yamaha AV Automations", namespace: "abucher", title: "Create New AV Automation", multiple: true)
         }
     }
-}
-
-def addRoutine() {
-	dynamicPage(name: "addRoutine", title: "Configure Actions") {
-    	section() {
-        	def actions = location.helloHome?.getPhrases()*.label
-        	if (actions) {
-            	actions.sort()
-                input("routine", "enum", title: "Select a routine", options: actions, required: true, multiple: false)
-                input("yamahaDevice", "enum", title: "Select a Yamaha device", options: getChildDevices(), required: true, multiple: false, submitOnChange: true)
-                //input("routineAction", "enum", title: "Select routine action", options: yamahaDevice?.getActions(), required: true)
-            } else {
-            	paragraph "No routines to configure."
-            }
-        }
-    }
-}
-
-def modifyRoutine() {
 }
 
 /**
@@ -156,7 +123,7 @@ private verifyYamahas(String deviceNetworkId) {
 /**
  * Device utilities.
  */
-Map yamahasDiscovered() {
+def yamahasDiscovered() {
 	def verifiedYamahas = getVerifiedYamahaDevice()
 	def map = [:]
 	verifiedYamahas.each {
@@ -343,11 +310,12 @@ def locationHandler(evt) {
         		log.trace "SSDP: Unknown respose type: ${type}"
         }
 	} else {
-		log.trace "SSDP: Unknown event description: " + description
+		log.trace "SSDP: Unknown event description: ${description}"
 	}
 }
 
 private def parseEventMessage(Map event) {
+	log.trace "[parseEventMessage] ${event}"
 	return event
 }
 
