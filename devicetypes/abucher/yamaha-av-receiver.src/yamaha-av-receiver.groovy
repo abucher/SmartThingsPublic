@@ -19,15 +19,18 @@ metadata {
         capability "polling"
         capability "refresh"
         
+        attribute "powerControl", "enum", ["On", "Off", "Standby"]
         attribute "volume", "number"
         attribute "volumeExponent", "number"
         attribute "volumeUnit", "string"
         attribute "inputSelection", "string"
         attribute "mute", "string"
+        attribute "scenes", "enum"
+        attribute "sceneParams", "enum"
         
         command "volumeUp"
         command "volumeDown"
-        command "getRoutinePreferences"
+        command "getScenes"
 	}
 
 	simulator {
@@ -98,6 +101,16 @@ def parse(String description) {
             } else if (msg.xml.Main_Zone?.Scene?.text()) {
             	log.trace "[parse] Received XML message: Scenes"
                 
+                def scenes = []
+                def sceneParams = []
+                
+                msg.xml.Main_Zone.Scene.Scene_Sel_Item.children().each { scene ->
+                    scenes.add(scene.Title)
+                    sceneParams.add(scene.Param)
+                }
+                
+                sendEvent(name: 'scenes', value: scenes, displayed: false)
+                sendEvent(name: 'sceneParams', value: sceneParams, displayed: false)
             } else {
             	log.trace "[parse] Received XML message: Unknown"
             }
@@ -162,26 +175,23 @@ def volumeDown() {
 }
 
 /*
- * Scenes
+ * Status
  */
+def getStatus() {
+	sendXml("GET", "<Basic_Status>GetParam</Basic_Status>")
+}
+
 def getScenes() {
 	sendXml("GET", "<Scene><Scene_Sel_Item>GetParam</Scene_Sel_Item></Scene>")
 }
 
-/*
- * Status
- */
 def poll() {
-    sendXml("GET", "<Basic_Status>GetParam</Basic_Status>")
+   	getStatus()
+    getScenes()
 }
 
 def refresh() {
 	poll()
-}
-
-def getRoutinePreferences() {
-	log.debug "getRoutinePreferences"
-    getScenes()
 }
 
 /*
