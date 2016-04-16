@@ -68,10 +68,12 @@ def addRoutine() {
 }
 
 def setActions() {
-	dynamicPage(name: "setActions", title: "Set Device Actions") {
+	yamahaDevice.refresh()
+    yamahaDevice.supportedAttributes.each { log.debug "${it.name} and ${it.values}" }
+    dynamicPage(name: "setActions", title: "Set Device Actions") {
     	section {
-            yamahaDevice.getRoutinePreferences()
-            paragraph "Foo."
+        	input(name: "power", type: "enum", title: "Select Power State", options: (yamahaDevice.supportedAttributes.find { it.name == "powerControl" }).values, required: true, multiple: false)
+        	input(name: "scene", type: "enum", title: "Select a Scene", options: yamahaDevice.currentScenes, required: false, multiple: false)
         }
     }
 }
