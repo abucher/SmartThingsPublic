@@ -19,6 +19,7 @@ definition (
     author: "Aaron Bucher",
     description: "Interface with Yahama receivers and blu-ray players.",
     category: "My Apps",
+    singleInstance: true,
     iconUrl: "https://lh5.ggpht.com/EmAboPYuJpxYeXt7dPUPjqZoNvkhr4r-RW2PKVCePZz-_Qqu6lCSPuocKgNaIgmZuMw=w300-rw",
     iconX2Url: "https://lh5.ggpht.com/EmAboPYuJpxYeXt7dPUPjqZoNvkhr4r-RW2PKVCePZz-_Qqu6lCSPuocKgNaIgmZuMw=w300-rw",
     iconX3Url: "https://lh5.ggpht.com/EmAboPYuJpxYeXt7dPUPjqZoNvkhr4r-RW2PKVCePZz-_Qqu6lCSPuocKgNaIgmZuMw=w300-rw"
@@ -37,7 +38,7 @@ preferences {
 	page(name: "yamahaDiscovery", title: "Yamaha Device Setup", content: "deviceDiscovery", refreshTimeout: 5)
     page(name: "configureRoutines", title: "Configure Routines", install: true, uninstall: true, submitOnChange: true) {
     	section {
-        	app(name: "yamahaAutomations", appName: "Yamaha AV Automations", namespace: "abucher", title: "Create New AV Automation", multiple: true)
+        	app(name: "yamahaAutomation", appName: "Yamaha AV Automation", namespace: "abucher", title: "Create New AV Automation", multiple: true)
         }
     }
 }
@@ -47,6 +48,8 @@ preferences {
  */
 def deviceDiscovery () {
 	if(canInstallLabs()) {
+    	initializeDiscovery()
+    
 		int refreshCount = !state.refreshCount ? 0 : state.refreshCount as int
 		state.refreshCount = refreshCount + 1
 		def refreshInterval = 3
@@ -160,7 +163,6 @@ def uninstalled() {
 def updated() {
 	log.debug "Updated with settings: ${settings}"
 
-	unsubscribe()
 	initialize()
 }
 
@@ -168,14 +170,15 @@ def updated() {
 def initialize() {
 	unsubscribe()
 	state.subscribe = false
+    
+    if (selectedYamaha) {
+    	addYamaha()
+    }
+}
 
-	unschedule()
+def initializeDiscovery() {
 	scheduleActions()
-
-	if (selectedYamaha) {
-		addYamaha()
-	}
-
+	initialize()
 	scheduledActionsHandler()
 }
 
@@ -291,6 +294,8 @@ def locationHandler(evt) {
             
 			if (body?.device?.manufacturer?.text().contains("YAMAHA CORPORATION")) {
 				def yamahas = getYamahaDevice()
+                log.debug "[locationHandler] yamahas: ${yamahas}"
+                log.debug "[locationHandler] New device UDN: ${body?.device?.UDN?.text()}"
 				def device = yamahas.find {it?.key?.contains(body?.device?.UDN?.text())}
 				if (device) {
                 	log.trace "SSDP: Updating Yamaha device: Name: ${body?.device?.friendlyName?.text()}, Description: ${body?.device?.modelDescription?.text()}, Model: ${body?.device?.modelName?.text()}; System ID: ${body?.device?.serialNumber?.text()}"
