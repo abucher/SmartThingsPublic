@@ -46,7 +46,7 @@ def updated() {
 }
 
 def initialize() {
-	// TODO: subscribe to attributes, devices, locations, etc.
+	subscribe(location, "routineExecuted", routineChanged)
 }
 
 /**
@@ -68,15 +68,33 @@ def addRoutine() {
 }
 
 def setActions() {
-	yamahaDevice.refresh()
-    yamahaDevice.supportedAttributes.each { log.debug "${it.name} and ${it.values}" }
+	log.debug "[setActions] yamahaDevice: ${yamahaDevice}"
+	yamahaDevice.getScenes()
+    //yamahaDevice.supportedAttributes.each { log.trace "${it.name} and ${it.values}" }
+    
+    log.debug "[setActions] Attribute scenes: ${yamahaDevice.currentValue("scenes")}"
+    
     dynamicPage(name: "setActions", title: "Set Device Actions") {
     	section {
-        	input(name: "power", type: "enum", title: "Select Power State", options: (yamahaDevice.supportedAttributes.find { it.name == "powerControl" }).values, required: true, multiple: false)
-        	input(name: "scene", type: "enum", title: "Select a Scene", options: yamahaDevice.currentScenes, required: false, multiple: false)
+        	input(name: "power", type: "enum", title: "Select Power State", options: ["On", "Off", "Standby"], required: true, multiple: false)
+            input(name: "scene", type: "enum", title: "Select a Scene", options: yamahaDevice.currentValue("scenes").split(', '), required: false, multiple: false)
         }
     }
 }
 
 def modifyRoutine() {
+}
+
+/**
+ * Routine events
+ */
+def routineChanged(evt) {
+	log.debug "[routineChanged] Routine changed ${evt.displayName}"
+    
+    if (evt.displayName == routine) {
+    	log.trace "[routineChanged] Setting yamaha device power: ${power}"
+    	//yamahaDevice.setPower(power)
+        log.trace "[routineChanged] Setting yamaha device scene: ${scene}"
+        //yamahaDevice.setScene(scene)
+    }
 }
