@@ -25,12 +25,12 @@ metadata {
         attribute "volumeUnit", "string"
         attribute "inputSelection", "string"
         attribute "mute", "string"
-        attribute "scenes", "enum"
-        attribute "sceneParams", "enum"
+        attribute "scenes", "string"
         
         command "volumeUp"
         command "volumeDown"
         command "getScenes"
+        command "setScene", ["string"]
 	}
 
 	simulator {
@@ -100,17 +100,13 @@ def parse(String description) {
                 	value: msg.xml.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title, displayed: false)
             } else if (msg.xml.Main_Zone?.Scene?.text()) {
             	log.trace "[parse] Received XML message: Scenes"
-                
-                def scenes = []
-                def sceneParams = []
-                
+				def sceneList = []
+                state.scenes = [:]                
                 msg.xml.Main_Zone.Scene.Scene_Sel_Item.children().each { scene ->
-                    scenes.add(scene.Title)
-                    sceneParams.add(scene.Param)
+                    state.scenes.put(scene.Title.toString(), scene.Param.toString())
+                    sceneList.add(scene.Title)
                 }
-                
-                sendEvent(name: 'scenes', value: scenes, displayed: false)
-                sendEvent(name: 'sceneParams', value: sceneParams, displayed: false)
+                sendEvent(name: "scenes", value: sceneList.join(', '), displayed: false)
             } else {
             	log.trace "[parse] Received XML message: Unknown"
             }
@@ -123,7 +119,7 @@ def parse(String description) {
     results
 }
 
-/*
+/**
  * XML
  */
 def sendXml(String cmd, String xml, String zone = "Main_Zone") {
@@ -141,8 +137,8 @@ def sendXml(String cmd, String xml, String zone = "Main_Zone") {
 }
 
 /**
-  * Power
-  */
+ * Power
+ */
 private setPower(String setting) {
 	sendEvent(name: 'switch', value: (setting == 'On' ? 'on' : 'off'), displayed: false)
     sendXml("PUT", "<Power_Control><Power>${setting}</Power></Power_Control>")
@@ -156,7 +152,7 @@ def off() {
 	setPower("Standby")
 }
 
-/*
+/**
  * Volume
  */
 private setVolume(Integer setting) {
@@ -174,27 +170,34 @@ def volumeDown() {
 	setVolume(-5)
 }
 
-/*
- * Status
+/**
+ * Scenes
  */
-def getStatus() {
-	sendXml("GET", "<Basic_Status>GetParam</Basic_Status>")
-}
-
 def getScenes() {
 	sendXml("GET", "<Scene><Scene_Sel_Item>GetParam</Scene_Sel_Item></Scene>")
 }
 
+def setScene(String scene) {
+	sendXml("PUT", "<Scene><Scene_Sel>${state.scenes[scene]}</Scene_Sel></Scene>")
+}
+
+/**
+ * Status
+ */
+def getStatus() {
+    log.debug "[getStatus] Current scenes: ${state.scenes}"
+	sendXml("GET", "<Basic_Status>GetParam</Basic_Status>")
+}
+
 def poll() {
    	getStatus()
-    getScenes()
 }
 
 def refresh() {
 	poll()
 }
 
-/*
+/**
  * Utilities
  */
 private getHostAddress() {
@@ -202,9 +205,6 @@ private getHostAddress() {
     def port = getDataValue("port")
     
     if (!ip || !port) {
-    	log.trace "device.deviceNetworkId: ${device.deviceNetworkId}"
-        log.trace "device.label: ${device.label}"
-        log.trace "device.type: ${device.type}"
         def parts = device.deviceNetworkId.split(":")
         if (parts.length == 2) {
             ip = parts[0]
