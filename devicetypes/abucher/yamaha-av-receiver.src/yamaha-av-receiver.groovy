@@ -100,13 +100,16 @@ def parse(String description) {
                 	value: msg.xml.Main_Zone.Basic_Status.Input.Current_Input_Sel_Item.Title, displayed: false)
             } else if (msg.xml.Main_Zone?.Scene?.text()) {
             	log.trace "[parse] Received XML message: Scenes"
-				def sceneList = []
-                state.scenes = [:]                
+
+				state.scenes = [:]
                 msg.xml.Main_Zone.Scene.Scene_Sel_Item.children().each { scene ->
                     state.scenes.put(scene.Title.toString(), scene.Param.toString())
-                    sceneList.add(scene.Title)
                 }
-                sendEvent(name: "scenes", value: sceneList.join(', '), displayed: false)
+                
+                def builder = new groovy.json.JsonBuilder()
+                builder(state.scenes)
+
+                sendEvent(name: "scenes", value: builder.toString(), displayed: false)
             } else {
             	log.trace "[parse] Received XML message: Unknown"
             }
