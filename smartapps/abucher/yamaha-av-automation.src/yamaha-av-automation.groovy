@@ -30,6 +30,7 @@ preferences {
     page(name: "addRoutine")
     page(name: "modifyRoutine")
     page(name: "setActions")
+    page(name: "setLabel")
 }
 
 def installed() {
@@ -69,16 +70,42 @@ def addRoutine() {
 
 def setActions() {
 	log.debug "[setActions] yamahaDevice: ${yamahaDevice}"
+    
+    if (yamahaDevice instanceof String) {
+    	log.debug "[setActions] yamahaDevice is string... retrieving device wrapper."
+        def yamahaDevice = parent.getChildDevice("C0A801EF:0050")
+        log.debug "[setActions] New yamahaDevice: ${yamahaDevice}"
+    }
+    
 	yamahaDevice.getScenes()
     //yamahaDevice.supportedAttributes.each { log.trace "${it.name} and ${it.values}" }
     
-    log.debug "[setActions] Attribute scenes: ${yamahaDevice.currentValue("scenes")}"
+    def currentScenes = new groovy.json.JsonSlurper().parseText(yamahaDevice.currentValue("scenes"))
+    log.debug "[setActions] Parsed scene attributes: ${currentScenes instanceof Map}, ${currentScenes}"
     
-    dynamicPage(name: "setActions", title: "Set Device Actions") {
+    dynamicPage(name: "setActions", title: "Set Device Actions", nextPage: "setLabel") {
     	section {
         	input(name: "power", type: "enum", title: "Select Power State", options: ["On", "Off", "Standby"], required: true, multiple: false)
-            input(name: "scene", type: "enum", title: "Select a Scene", options: yamahaDevice.currentValue("scenes").split(', '), required: false, multiple: false)
+            input(name: "scene", type: "enum", title: "Select a Scene", options: currentScenes.keySet(), required: false, multiple: false)
         }
+    }
+}
+
+def setLabel() {
+	if (!customLabel) {
+    	app.updateLabel("Turn ${yamahaDevice.displayName} ${power.toLowerCase()}${scene ? " and set scene to " + scene : ""}")
+    }
+    dynamicPage(name: "setLabel") {
+    	section("Automation Name") {
+        	if (customLabel) {
+            	label(title: "Enter custom name", defaultValue: app.label, required: false)
+            } else {
+            	paragraph(app.label)
+            }
+        }
+        section {
+        	input(name: "customLabel", type: "bool", title: "Edit automation name", defaultValue: "false", required: false, submitOnChange: true)
+        }       	
     }
 }
 
