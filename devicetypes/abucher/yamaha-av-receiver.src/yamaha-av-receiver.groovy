@@ -31,6 +31,7 @@ metadata {
         command "volumeDown"
         command "getScenes"
         command "setScene", ["string"]
+        command "setPower", ["string"]
 	}
 
 	simulator {
@@ -142,7 +143,8 @@ def sendXml(String cmd, String xml, String zone = "Main_Zone") {
 /**
  * Power
  */
-private setPower(String setting) {
+def setPower(String setting) {
+	log.debug "[setPower] Setting power to ${setting}."
 	sendEvent(name: 'switch', value: (setting == 'On' ? 'on' : 'off'), displayed: false)
     sendXml("PUT", "<Power_Control><Power>${setting}</Power></Power_Control>")
 }
@@ -181,6 +183,7 @@ def getScenes() {
 }
 
 def setScene(String scene) {
+	log.debug "[setScene] Setting scene to ${scene}."
 	sendXml("PUT", "<Scene><Scene_Sel>${state.scenes[scene]}</Scene_Sel></Scene>")
 }
 
@@ -188,7 +191,6 @@ def setScene(String scene) {
  * Status
  */
 def getStatus() {
-    log.debug "[getStatus] Current scenes: ${state.scenes}"
 	sendXml("GET", "<Basic_Status>GetParam</Basic_Status>")
 }
 
