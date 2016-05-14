@@ -47,46 +47,36 @@ preferences {
  * Device discovery.
  */
 def deviceDiscovery () {
-	if(canInstallLabs()) {
-    	initializeDiscovery()
-    
-		int refreshCount = !state.refreshCount ? 0 : state.refreshCount as int
-		state.refreshCount = refreshCount + 1
-		def refreshInterval = 3
+    initializeDiscovery()
 
-		def options = yamahasDiscovered() ?: []
+	int refreshCount = !state.refreshCount ? 0 : state.refreshCount as int
+	state.refreshCount = refreshCount + 1
+	
+    def refreshInterval = 3
 
-		def numFound = options.size() ?: 0
+	def options = yamahasDiscovered() ?: []
 
-		if(!state.subscribe) {
-			log.trace "Yamaha: Subscribe to location..."
-			subscribe(location, null, locationHandler, [filterEvents:false])
-			state.subscribe = true
-		}
+	def numFound = options.size() ?: 0
 
-		// Yamaha discovery request every 5 //25 seconds
-		if((refreshCount % 8) == 0) {
-			discoverYamahas()
-		}
-
-		// GetBasicStatus request every 3 seconds except on discoveries
-		if(((refreshCount % 1) == 0) && ((refreshCount % 8) != 0)) {
-			verifyYamahaDevice()
-		}
-
-		return dynamicPage(name:"yamahaDiscovery", title:"Yamaha Discovery Started!", nextPage:"", refreshInterval:refreshInterval, install:true, uninstall: true) {
-			section("Please wait while we discover your Yamaha device... discovery can take five minutes or more, so sit back and relax! Select your device below once discovered.") {
-				input "selectedYamaha", "enum", required:false, title:"Select Yamaha (${numFound} found)", multiple:true, options:options
-			}
-		}
+	if(!state.subscribe) {
+		log.trace "Yamaha: Subscribe to location..."
+		subscribe(location, null, locationHandler, [filterEvents:false])
+		state.subscribe = true
 	}
-	else {
-		return dynamicPage(name:"yamahaDiscovery", title:"Upgrade needed!", nextPage:"", install:false, uninstall: true) {
-			section("Upgrade") {
-				paragraph """To use SmartThings Labs, your Hub should be completely up to date.
 
-To update your Hub, access Location Settings in the Main Menu (tap the gear next to your location name), select your Hub, and choose "Update Hub"."""
-			}
+	// Yamaha discovery request every 5 //25 seconds
+	if((refreshCount % 8) == 0) {
+		discoverYamahas()
+	}
+
+	// GetBasicStatus request every 3 seconds except on discoveries
+	if(((refreshCount % 1) == 0) && ((refreshCount % 8) != 0)) {
+		verifyYamahaDevice()
+	}
+
+	dynamicPage(name:"yamahaDiscovery", title:"Yamaha Discovery Started!", nextPage:"", refreshInterval:refreshInterval, install:true, uninstall: true) {
+		section("Please wait while we discover your Yamaha device... discovery can take five minutes or more, so sit back and relax! Select your device below once discovered.") {
+			input "selectedYamaha", "enum", required:false, title:"Select Yamaha (${numFound} found)", multiple:true, options:options
 		}
 	}
 }
@@ -426,27 +416,5 @@ private Integer convertHexToInt(hex) {
 
 private String convertHexToIP(hex) {
 	[convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
-}
-
-private getHostAddress(d) {
-	def parts = d.split(":")
-	def ip = convertHexToIP(parts[0])
-	def port = convertHexToInt(parts[1])
-	return ip + ":" + port
-}
-
-private Boolean canInstallLabs()
-{
-	return hasAllHubsOver("000.011.00603")
-}
-
-private Boolean hasAllHubsOver(String desiredFirmware)
-{
-	return realHubFirmwareVersions.every { fw -> fw >= desiredFirmware }
-}
-
-private List getRealHubFirmwareVersions()
-{
-	return location.hubs*.firmwareVersionString.findAll { it }
 }
  
