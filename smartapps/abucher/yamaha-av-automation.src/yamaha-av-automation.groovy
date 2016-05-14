@@ -68,34 +68,38 @@ def addRoutine() {
     }
 }
 
-def setActions() {
-	log.debug "[setActions] yamahaDevice: ${yamahaDevice}"
-    
+def getDevice() {
     if (yamahaDevice instanceof String) {
-    	log.debug "[setActions] yamahaDevice is string... retrieving device wrapper."
-        def yamahaDevice = parent.getChildDevice("C0A801EF:0050")
-        log.debug "[setActions] New yamahaDevice: ${yamahaDevice}"
+    	log.debug "[getDevice] yamahaDevice is string... retrieving device wrapper."
+    	return parent.getChildDevices().find { dev -> dev.id == yamahaDevice }
     }
+    log.debug "[getDevice] yamahaDevice is a device wrapper."
+   	return yamahaDevice
+}
+
+def setActions() {    
+    def yDev = getDevice()
     
-	yamahaDevice.getScenes()
-    //yamahaDevice.supportedAttributes.each { log.trace "${it.name} and ${it.values}" }
+    yDev.getScenes()
     
-    def currentScenes = new groovy.json.JsonSlurper().parseText(yamahaDevice.currentValue("scenes"))
-    log.debug "[setActions] Parsed scene attributes: ${currentScenes instanceof Map}, ${currentScenes}"
-    
+    def currentScenes = new groovy.json.JsonSlurper().parseText(yDev.currentValue("scenes"))
+    List<String> sceneList = new ArrayList<String>(currentScenes.keySet())
+
     dynamicPage(name: "setActions", title: "Set Device Actions", nextPage: "setLabel") {
-    	section {
-        	input(name: "power", type: "enum", title: "Select Power State", options: ["On", "Off", "Standby"], required: true, multiple: false)
-            input(name: "scene", type: "enum", title: "Select a Scene", options: currentScenes.keySet(), required: false, multiple: false)
-        }
+		section {
+			input(name: "power", type: "enum", title: "Select Power State", options: ["On", "Off", "Standby"], required: true, multiple: false)
+          	input(name: "scene", type: "enum", title: "Select a Scene", options: sceneList, required: false, multiple: false)
+       	}	
     }
 }
 
 def setLabel() {
+	def yDev = getDevice()
+
 	if (!customLabel) {
-    	app.updateLabel("Turn ${yamahaDevice.displayName} ${power.toLowerCase()}${scene ? " and set scene to " + scene : ""}")
+    	app.updateLabel("When ${routine}, turn ${yDev.displayName} ${power}${scene ? " and set scene to " + scene : ""}")
     }
-    dynamicPage(name: "setLabel") {
+    dynamicPage(name: "setLabel", install: true) {
     	section("Automation Name") {
         	if (customLabel) {
             	label(title: "Enter custom name", defaultValue: app.label, required: false)
@@ -118,10 +122,12 @@ def modifyRoutine() {
 def routineChanged(evt) {
 	log.debug "[routineChanged] Routine changed ${evt.displayName}"
     
+    def dev = getDevice()
+    
     if (evt.displayName == routine) {
-    	log.trace "[routineChanged] Setting yamaha device power: ${power}"
-    	//yamahaDevice.setPower(power)
-        log.trace "[routineChanged] Setting yamaha device scene: ${scene}"
-        //yamahaDevice.setScene(scene)
+    	dev.setPower(power)
+        if (scene) {
+        	dev.setScene(scene)
+        }
     }
 }
