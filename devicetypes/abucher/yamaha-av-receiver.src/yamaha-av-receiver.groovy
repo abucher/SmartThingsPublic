@@ -15,7 +15,6 @@
  */
 metadata {
 	definition (name: "Yamaha AV Receiver", namespace: "abucher", author: "Aaron Bucher") {
-    	capability "switch"
         capability "polling"
         capability "refresh"
         
@@ -39,44 +38,30 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-        /*multiAttributeTile(name: "yamahaReceiver", type: "thermostat", width: 6, height: 4) {
+        multiAttributeTile(name: "yamahaReceiver", type: "generic", width: 6, height: 4) {
   			tileAttribute("device.powerControl", key: "PRIMARY_CONTROL") {
-            	attributeState("Standby", label: '${name}', action: "powerOn", icon: "st.switches.switch.off", backgroundColor: "#ffffff")
-                attributeState("On", label: '${name}', action: "powerStandby", icon: "st.switches.switch.on", backgroundColor: "#E60000")
+            	attributeState("Standby", label: 'Standby', action: "powerOn", icon: "st.Electronics.electronics19", backgroundColor: "#ffffff")
+                attributeState("On", label: 'on', action: "powerOff", icon: "st.Electronics.electronics19", backgroundColor: "#79b821")
   			}
         	tileAttribute("device.inputSelection", key: "SECONDARY_CONTROL") {
             	attributeState("default", label: '${currentValue}', textColor: "#000000")
             }
             tileAttribute("device.volume", key: "VALUE_CONTROL") {
-            	attributeState("default", action: "setVolume")
+            	attributeState("VALUE_UP", action: "volumeUp")
+                attributeState("VALUE_DOWN", action: "volumeDown")
             }
-        }*/
-        standardTile("yamahaReceiver", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-    		state("off", label: '${name}', action: "on", icon: "st.switches.switch.off", backgroundColor: "#ffffff")
-    		state("on", label: '${name}', action: "off", icon: "st.switches.switch.on", backgroundColor: "#79b821")
         }
-        valueTile("inputSelection", "device.inputSelection", width: 4, height: 2) {
-        	state("default", label: '${currentValue}')
-        }
-        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 6, height: 2) {
         	state("default", action:"refresh.refresh", icon:"st.secondary.refresh")
     	}
-        valueTile("volume", "device.volume", width: 2, height: 2) {
-        	state("default", label: '${currentValue} dB', textColor: "#000000", backgroundColor: "#ffffff")
-        }
-        standardTile("volumeUp", "device.volume", width: 2, height: 2, canChangeIcon: false, inactiveLabel: false) {
-            state("default", label:'  ', action:"volumeUp", icon:"st.thermostat.thermostat-up")
-        }
-        standardTile("volumeDown", "device.volume", width: 2, height: 2, canChangeIcon: false, inactiveLabel: false) {
-            state("default", label:'  ', action:"volumeDown", icon:"st.thermostat.thermostat-down")
-        }
-	
     	main("yamahaReceiver")
-        details(["yamahaReceiver", "inputSelection", "volumeDown", "volume", "volumeUp", "refresh"])
+        details(["yamahaReceiver", "refresh"])
     }
 }
 
-// parse events into attributes
+/**
+ * Message parsing
+ */
 def parse(String description) {
 	log.debug "[parse] description: ${description}"
 	def results = []
@@ -87,8 +72,8 @@ def parse(String description) {
             if (msg.xml.Main_Zone?.Basic_Status?.text()) {
             	log.trace "[parse] Received XML message: Basic Status"
             
-                sendEvent(name: 'switch',
-                	value: (msg.xml.Main_Zone.Basic_Status.Power_Control.Power == 'On' ? 'on' : 'off'), displayed: false)
+                sendEvent(name: 'powerControl',
+                	value: msg.xml.Main_Zone.Basic_Status.Power_Control.Power, displayed: false)
                 sendEvent(name: 'volumeExponent',
                 	value: msg.xml.Main_Zone.Basic_Status.Volume.Lvl.Exp.toInteger(), displayed: false)
                 sendEvent(name: 'volume',
@@ -149,11 +134,11 @@ def setPower(String setting) {
     sendXml("PUT", "<Power_Control><Power>${setting}</Power></Power_Control>")
 }
 
-def on() {
+def powerOn() {
 	setPower("On")
 }
 
-def off() {
+def powerOff() {
 	setPower("Standby")
 }
 
@@ -162,7 +147,7 @@ def off() {
  */
 private setVolume(Integer setting) {
 	def newVolume = device.currentValue("volume") + setting*10**-device.currentValue("volumeExponent")
-
+	log.debug "[setVolume] Setting volume to ${newVolume} dB."
 	sendEvent(name: 'volume', value: newVolume, displayed: false)
     sendXml("PUT", "<Volume><Lvl><Val>${(newVolume*10**device.currentValue("volumeExponent")).toInteger()}</Val><Exp>${device.currentValue("volumeExponent")}</Exp><Unit>${device.currentValue("volumeUnit")}</Unit></Lvl></Volume>")
 }
@@ -190,12 +175,8 @@ def setScene(String scene) {
 /**
  * Status
  */
-def getStatus() {
-	sendXml("GET", "<Basic_Status>GetParam</Basic_Status>")
-}
-
 def poll() {
-   	getStatus()
+   	sendXml("GET", "<Basic_Status>GetParam</Basic_Status>")
 }
 
 def refresh() {
