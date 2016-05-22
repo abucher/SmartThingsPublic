@@ -130,7 +130,7 @@ def sendXml(String cmd, String xml, String zone = "Main_Zone") {
  */
 def setPower(String setting) {
 	log.debug "[setPower] Setting power to ${setting}."
-	sendEvent(name: 'switch', value: (setting == 'On' ? 'on' : 'off'), displayed: false)
+	sendEvent(name: 'switch', value: setting, displayed: false)
     sendXml("PUT", "<Power_Control><Power>${setting}</Power></Power_Control>")
 }
 
